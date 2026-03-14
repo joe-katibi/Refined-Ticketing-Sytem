@@ -1,0 +1,13 @@
+{
+    "name": "Outages",
+    "alias": "outages",
+    "description": "Outages Management Module",
+    "keywords": ["laravel", "outages", "ticketing"],
+    "priority": 0,
+    "providers": [
+        "Modules\\Outages\\Providers\\OutagesServiceProvider"
+    ],
+    "aliases": {},
+    "files": [],
+    "requires": []
+}

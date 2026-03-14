@@ -1,0 +1,5 @@
+{
+    "Appointment": true,
+    "Escalations": true,
+    "Outages": true
+}

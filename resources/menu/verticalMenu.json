@@ -1,0 +1,289 @@
+{
+  "menu": [
+    {
+      "name": "User Management",
+      "icon": "menu-icon tf-icons ti ti-users",
+      "slug": "user",
+      "permission": "view-users-management-menu",
+      "submenu": [
+        {
+          "name": "Dashboard",
+          "icon": "menu-icon tf-icons ti ti-layout-grid",
+          "slug": "user.dashboard",
+          "url": "/user-dashboard",
+          "permission": "view-dashboard-user"
+        },
+        {
+          "name": "List",
+          "url": "settings/users",
+          "slug": "settings.users",
+          "permission": "view-users-list-menu"
+        },
+        {
+          "name": "Department",
+          "url": "settings/departments",
+          "slug": "settings.departments.index",
+          "permission": "view-user-department-menu"
+        },
+        {
+          "name": "Roles",
+          "url": "settings/roles",
+          "slug": "settings.roles",
+          "permission": "view-user-roles-menu"
+        },
+        {
+          "name": "Permission",
+          "url": "settings/permissions",
+          "slug": "settings.permissions",
+          "permission": "view-user-permissions-menu"
+        },
+        {
+          "name": "Team Types",
+          "url": "/teamtypes",
+          "slug": "teamtypes.index",
+          "permission": "view-user-team-types-menu"
+        }
+      ]
+    },
+    {
+      "name": "Escalations",
+      "icon": "menu-icon tf-icons ti ti-headset",
+      "slug": "quality",
+      "permission": "view-escalation-menu",
+      "submenu": [
+        {
+          "name": "Dashboard",
+          "url": "/dashboard",
+          "slug": "dashboard.index",
+          "permission": "view-dashboard-escalation"
+        },
+        {
+          "name": "Escalate",
+          "url": "/list/escalate",
+          "slug": "list.index",
+          "permission": "view-escalate-menu"
+        },
+        {
+          "name": "Escalations",
+          "url": "/escalation",
+          "slug": "escalations.index",
+          "permission": "view-escalations-menu"
+        },
+        {
+          "name": "Source",
+          "url": "/sources",
+          "slug": "sources.index",
+          "permission": "view-sources-escalation"
+        },
+        {
+          "name": "Categories",
+          "url": "/escalation-category",
+          "slug": "escalation-category.index",
+          "permission": "view-escalation-categories-menu"
+        },
+        {
+          "name": "Notifications",
+          "url": "/notifications",
+          "slug": "notifications.index",
+          "permission": "view-escalation-notification-menu"
+        },
+        {
+          "name": "Reports",
+          "url": "/reports",
+          "slug": "escalations.reports.index",
+          "permission": "view-escalation-report-menu"
+        }
+      ]
+    },
+    {
+      "name": "Site visits",
+      "icon": "menu-icon tf-icons ti ti-truck",
+      "slug": "site-visit",
+      "permission": "view-appointment-menu",
+      "submenu": [
+        {
+          "name": "Dashboard",
+          "url": "/appointment-dashboard",
+          "slug": "appointment.dashboard.index",
+          "permission": "view-dashboard-appointment"
+        },
+        {
+          "name": "Appointments",
+          "url": "/appointments/appointment",
+          "slug": "appointment.appointments.index",
+          "permission": "view-appointments-menu"
+        },
+        {
+          "name": "Appointment List",
+          "url": "/appointments/list",
+          "slug": "appointment.appointments.list",
+          "permission": "view-appointment-list-menu"
+        },
+        {
+          "name": "Assigned Appointments",
+          "url": "/appointments/assigned",
+          "slug": "appointment.appointments.assigned",
+          "permission": "view-assigned-appointments-menu"
+        },
+        {
+          "name": "My Appointments",
+          "url": "/appointments/my-appointments",
+          "slug": "appointment.appointments.my_appointments",
+          "permission": "view-my-appointments-menu"
+        },
+        {
+          "name": "Infrastructure",
+          "icon": "menu-icon tf-icons ti ti-building",
+          "slug": "infrastructure",
+          "permission": "view-appointment-infrastructure-menu",
+          "submenu": [
+            {
+              "name": "History",
+              "url": "/site-visit/infrastructure/history",
+              "slug": "site-visit.infrastructure.history",
+              "permission": "view-appointment-infrastructure-history-menu"
+            },
+            {
+              "name": "New",
+              "url": "/site-visit/infrastructure/new",
+              "slug": "site-visit.infrastructure.new",
+              "permission": "view-appointment-infrastructure-new-menu"
+            }
+          ]
+        },
+        {
+          "name": "NOC",
+          "icon": "menu-icon tf-icons ti ti-server",
+          "slug": "noc",
+          "permission": "view-appointment-noc-menu",
+          "submenu": [
+            {
+              "name": "History",
+              "url": "/site-visit/noc/history",
+              "slug": "site-visit.noc.history",
+              "permission": "view-appointment-noc-history-menu"
+            },
+            {
+              "name": "New",
+              "url": "/site-visit/noc/new",
+              "slug": "site-visit.noc.new",
+              "permission": "view-appointment-noc-new-menu"
+            }
+          ]
+        },
+        {
+          "name": "Design",
+          "icon": "menu-icon tf-icons ti ti-pencil",
+          "slug": "design",
+          "permission": "view-site-visit-appointment",
+          "submenu": [
+            {
+              "name": "History",
+              "url": "/site-visit/design/history",
+              "slug": "site-visit.design.history",
+              "permission": "view-site-visit-appointment"
+            },
+            {
+              "name": "New",
+              "url": "/site-visit/design/new",
+              "slug": "site-visit.design.new",
+              "permission": "view-site-visit-appointment"
+            }
+          ]
+        },
+        {
+          "name": "Appointment Type",
+          "url": "/appointment-types",
+          "slug": "appointment.types.index",
+          "permission": "view-appointment-type-menu"
+        },
+        {
+          "name": "Status Management",
+          "url": "/appointment-statuses",
+          "slug": "appointment.statuses.index",
+          "permission": "view-statuses-appointment"
+        },
+        {
+          "name": "Final Reasons",
+          "url": "/appointment-final-reasons",
+          "slug": "appointment.final-reasons.index",
+          "permission": "view-appointment-final-reasons-menu"
+        },
+        {
+          "name": "Notifications",
+          "url": "/appointment-notifications",
+          "slug": "appointment.notifications.index",
+          "permission": "view-appointment-notification-menu"
+        },
+        {
+          "name": "Reports",
+          "url": "/appointment-reports",
+          "slug": "appointment.reports.index",
+          "permission": "view-appointment-reports-menu"
+        }
+      ]
+    },
+    {
+      "name": "Outages",
+      "icon": "menu-icon tf-icons ti ti-alert-triangle",
+      "slug": "outages",
+      "permission": "view-outage-menu",
+      "submenu": [
+        {
+          "name": "Dashboard",
+          "url": "/outage-dashboard",
+          "slug": "outage-dashboard.index",
+          "permission": "view-dashboard-outage"
+        },
+        {
+          "name": "Outages",
+          "url": "/outages",
+          "slug": "outages.index",
+          "permission": "view-outage-menu"
+        },
+        {
+          "name": "Assigned Outages",
+          "url": "/assigned-outages",
+          "slug": "outages.assigned",
+          "permission": "view-assigned-outage-menu"
+        },
+        {
+          "name": "My Outages",
+          "url": "/my-outages",
+          "slug": "outages.my-outages",
+          "permission": "view-my-outage-menu"
+        },
+        {
+          "name": "OLT Management",
+          "url": "/olts",
+          "slug": "olts.index",
+          "permission": "view-olt-management-menu"
+        },
+        {
+          "name": "Affected Areas",
+          "url": "/affected-areas",
+          "slug": "outages.affected-areas.index",
+          "permission": "view-affected-areas-menu"
+        },
+        {
+          "name": "Affected Services",
+          "url": "/affected-services",
+          "slug": "outages.affected-services.index",
+          "permission": "view-affected-services-menu"
+        },
+        {
+          "name": "Final Reasons",
+          "url": "/final-reasons",
+          "slug": "outages.final-reasons.index",
+          "permission": "view-outage-final-reasons-menu"
+        },
+        {
+          "name": "Reports",
+          "url": "/outage-reports",
+          "slug": "outage-reports.index",
+          "permission": "view-outage-download-reports"
+        }
+      ]
+    }
+  ]
+}

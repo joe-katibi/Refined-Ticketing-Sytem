@@ -1,0 +1,11 @@
+{
+    "name": "Escalations",
+    "alias": "escalations",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\Escalations\\Providers\\EscalationsServiceProvider"
+    ],
+    "files": []
+}

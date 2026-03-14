@@ -1,0 +1,940 @@
+<?php
+
+namespace Modules\Appointment\Http\Controllers;
+
+use App\Models\SubDepartment;
+use App\Models\SubTeamType;
+use App\Models\TeamType;
+use Illuminate\Contracts\Support\Renderable;
+use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
+use App\Http\Controllers\OptimizedController;
+use Modules\Appointment\Models\Appointment;
+use Modules\Appointment\Models\AppointmentFinalReason;
+use Modules\Appointment\Models\AppointmentHistory;
+use Modules\Appointment\Models\AppointmentStatus;
+use Modules\Appointment\Models\AppointmentStatusHistory;
+use Modules\Appointment\Models\AppointmentType;
+use Modules\Appointment\Models\SiteVisitFinalReason;
+use Modules\Appointment\Models\SubAppointmentType;
+use Modules\Outages\Models\Olt;
+use Modules\Outages\Models\OltSlot;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
+use App\Models\User;
+use Yajra\DataTables\Facades\DataTables;
+use Modules\Appointment\Services\NotificationService;
+
+class AppointmentController extends OptimizedController
+{
+  /**
+   * The notification service instance.
+   *
+   * @var \Modules\Appointment\Services\NotificationService
+   */
+  protected $notificationService;
+
+  /**
+   * Create a new controller instance.
+   *
+   * @param \Modules\Appointment\Services\NotificationService $notificationService
+   * @return void
+   */
+  public function __construct(NotificationService $notificationService)
+  {
+    parent::__construct();
+    $this->notificationService = $notificationService;
+    // $this->middleware('permission:view-list-appointment')->only(['index']);
+    // $this->middleware('permission:view-create-appointment')->only(['create', 'store']);
+    // $this->middleware('permission:view-view-appointment')->only(['show']);
+    // $this->middleware('permission:view-edit-appointment')->only(['edit', 'update']);
+    // $this->middleware('permission:view-delete-appointment')->only(['destroy']);
+  }
+
+  /**
+   * Display a listing of the resource.
+   */
+  public function index(Request $request)
+  {
+    $query = Appointment::withOptimizedRelations(['type', 'subType', 'creator', 'assignedTeam', 'olt']);
+
+    // Apply status filter if provided
+    if ($request->has('status') && $request->status) {
+      $query->where('status', $request->status);
+    }
+
+    $appointments = $query->latest()->paginate(25);
+
+    // Get all active statuses for the filter dropdown
+    $statuses = AppointmentStatus::active()
+      ->orderBy('sort_order')
+      ->get();
+
+    return view('appointment::appointment.index', compact('appointments', 'statuses'));
+  }
+
+  /**
+   * Display a list of appointments grouped by type
+   */
+  /**
+   * Display assigned appointments grouped by team type (In-House/Outsource Partner)
+   */
+  public function assigned()
+  {
+    // Get in-house team type ID (assuming it exists)
+    $inhouseTeamType = TeamType::where('type_name', 'Inhouse')->first();
+    $outsourceTeamType = TeamType::where('type_name', 'Outsource Partner')->first();
+
+    // Get appointments for in-house team (specific statuses only)
+    $inhouseAppointments = [];
+    if ($inhouseTeamType) {
+      $inhouseAppointments = Appointment::with([
+        'type',
+        'subType',
+        'creator',
+        'assignedTeam',
+        'teamType',
+        'subTeamType',
+      ])
+        ->where('team_type_id', $inhouseTeamType->id)
+        ->whereIn('status', ['scheduled-assigned-team', 'rescheduled', 'support-post-install'])
+        ->latest()
+        ->get();
+    }
+
+    // Get appointments for outsource partner team (specific statuses only)
+    $outsourceAppointments = [];
+    if ($outsourceTeamType) {
+      $outsourceAppointments = Appointment::with([
+        'type',
+        'subType',
+        'creator',
+        'assignedTeam',
+        'teamType',
+        'subTeamType',
+      ])
+        ->where('team_type_id', $outsourceTeamType->id)
+        ->whereIn('status', ['scheduled-assigned-team', 'rescheduled', 'support-post-install'])
+        ->latest()
+        ->get();
+    }
+
+    return view('appointment::appointment.assigned', compact('inhouseAppointments', 'outsourceAppointments'));
+  }
+
+  /**
+   * Display a list of appointments grouped by type
+   */
+  public function list()
+  {
+    // Get all appointment types for the navigation pills
+    $appointmentTypes = AppointmentType::with('subTypes')->get();
+
+    // Initialize an array to hold appointments grouped by type
+    $appointmentsByType = [];
+
+    // Get appointments for each type
+    foreach ($appointmentTypes as $type) {
+      // Get all sub-type IDs for this type
+      $subTypeIds = $type->subTypes->pluck('id');
+
+      // Get appointments for this type (scheduled-open and support-post-install statuses)
+      $appointmentsByType[$type->id] = Appointment::with(['type', 'subType', 'creator', 'assignedTeam', 'olt'])
+        ->whereIn('appointment_type_id', $subTypeIds)
+        ->whereIn('status', ['scheduled-open', 'support-post-install'])
+        ->latest()
+        ->get();
+    }
+
+    return view('appointment::appointment.list', [
+      'appointmentTypes' => $appointmentTypes,
+      'appointmentsByType' => $appointmentsByType,
+    ]);
+  }
+
+  /**
+   * Display appointments assigned to the current user
+   */
+  public function myAppointments()
+  {
+    $currentUser = auth()->user();
+
+    // Eager load the teams relationship to avoid N+1 queries
+    if (method_exists($currentUser, 'teams')) {
+      $currentUser->load('teams');
+    }
+
+    // Get appointments where the user is assigned through any of the following:
+    // 1. User's sub_team_type_id matches appointment's sub_team_type_id
+    // 2. User's team_id matches appointment's assigned_team_id
+    // 3. User belongs to a team that is assigned to the appointment
+    $myAppointments = Appointment::with([
+      'type',
+      'subType',
+      'creator',
+      'assignedTeam',
+      'teamType',
+      'subTeamType',
+      'appointmentStatus',
+    ])
+      ->where(function ($query) use ($currentUser) {
+        // Check if user's sub_team_type_id matches appointment's sub_team_type_id
+        if ($currentUser->sub_team_type_id) {
+          $query->where('sub_team_type_id', $currentUser->sub_team_type_id);
+        }
+
+        // Check if user belongs to a team that is assigned to appointments
+        if (method_exists($currentUser, 'teams') && $currentUser->teams && $currentUser->teams->count() > 0) {
+          $teamIds = $currentUser->teams->pluck('id')->toArray();
+          if (!empty($teamIds)) {
+            $query->orWhereIn('assigned_team_id', $teamIds);
+          }
+        }
+
+        // Check if user's team_id matches appointment's assigned_team_id
+        if (!empty($currentUser->team_id)) {
+          $query->orWhere('assigned_team_id', $currentUser->team_id);
+        }
+
+        // Check if user's team_type_id matches appointment's team_type_id
+        if (!empty($currentUser->team_type_id)) {
+          $query->orWhere(function ($q) use ($currentUser) {
+            $q->where('team_type_id', $currentUser->team_type_id)->whereNotNull('assigned_team_id');
+          });
+        }
+      })
+      ->whereIn('status', ['scheduled-assigned-team', 'rescheduled', 'support-post-install'])
+      ->latest()
+      ->get();
+
+    \Log::info('My Appointments query for user: ' . $currentUser->id, [
+      'user_team_id' => $currentUser->team_id ?? 'null',
+      'user_team_type_id' => $currentUser->team_type_id ?? 'null',
+      'user_sub_team_type_id' => $currentUser->sub_team_type_id ?? 'null',
+      'appointment_count' => $myAppointments->count(),
+    ]);
+
+    return view('appointment::appointment.my_appointments', compact('myAppointments'));
+  }
+
+  /**
+   * Show the form for creating a new resource.
+   */
+  public function create()
+  {
+    $types = AppointmentType::active()->get();
+    $teamTypes = TeamType::active()->get();
+    $subTypes = SubAppointmentType::active()->get();
+    $olts = Olt::active()
+      ->orderBy('name')
+      ->get();
+    $statuses = AppointmentStatus::active()
+      ->orderBy('sort_order')
+      ->get();
+
+    // Generate a unique submission token for this form
+    $submissionToken = md5(uniqid(mt_rand(), true));
+
+    return view('appointment::appointment.create', compact('types', 'subTypes', 'olts', 'statuses', 'submissionToken'));
+  }
+
+  /**
+   * Store a newly created resource in storage.
+   */
+  public function store(Request $request)
+  {
+    // Log the beginning of the store method
+    \Illuminate\Support\Facades\Log::info('AppointmentController@store: Starting validation');
+
+    // Check if this is a duplicate submission using session token
+    $submissionToken = $request->input('_submission_token');
+    if ($submissionToken) {
+      if (session()->has('used_submission_tokens') && in_array($submissionToken, session('used_submission_tokens'))) {
+        \Illuminate\Support\Facades\Log::warning('AppointmentController@store: Duplicate submission detected', [
+          'token' => $submissionToken,
+        ]);
+
+        return redirect()
+          ->route('appointment.appointments.index')
+          ->with('warning', 'This form has already been submitted. Please refresh and try again if needed.');
+      }
+
+      // Store the token as used
+      $usedTokens = session('used_submission_tokens', []);
+      $usedTokens[] = $submissionToken;
+      session(['used_submission_tokens' => $usedTokens]);
+    }
+
+    $validated = $request->validate([
+      'account_number' => 'required|string|max:255',
+      'appointment_id' => 'required|exists:appointment_types,id',
+      'appointment_type_id' => 'required|exists:sub_appointment_types,id',
+      'priority' => 'required|in:High,Medium,Low',
+      'status' => 'required|exists:appointment_statuses,name',
+      'scheduled_date' => 'required|date',
+      'scheduled_time' => 'required',
+      'appointment_location' => 'required|string|max:255',
+      'appointment_venue' => 'required|string|max:255',
+      'description_notes' => 'required|string',
+      'olt_id' => 'nullable|exists:olts,id',
+      'slot_id' => 'nullable|exists:olt_slots,id',
+    ]);
+
+    // Log after validation
+    \Illuminate\Support\Facades\Log::info('AppointmentController@store: Validation completed', [
+      'validated_data' => array_keys($validated),
+    ]);
+
+    // Get the appointment type
+    $appointmentType = AppointmentType::findOrFail($validated['appointment_id']);
+
+    // Generate prefix from type name (first 3 characters, uppercase)
+    $prefix = strtoupper(substr(preg_replace('/[^a-zA-Z]/', '', $appointmentType->type_name), 0, 3));
+
+    // If prefix is empty, use default 'TKT'
+    if (empty($prefix)) {
+      $prefix = 'TKT';
+    }
+
+    // Get the next ticket number for this prefix
+    $lastTicket = Appointment::where('appointment_ticket_id', 'LIKE', $prefix . '-%')
+      ->orderBy('id', 'desc')
+      ->first();
+
+    $ticketNumber = 1;
+    if (
+      $lastTicket &&
+      preg_match('/' . preg_quote($prefix) . '-(\d+)$/', $lastTicket->appointment_ticket_id, $matches)
+    ) {
+      $ticketNumber = (int) $matches[1] + 1;
+    }
+
+    $validated['appointment_ticket_id'] = $prefix . '-' . $ticketNumber;
+
+    // Get default status (Scheduled-Open) or use the one from the form
+    $defaultStatus = AppointmentStatus::where('name', 'scheduled-open')->first();
+    $validated['status'] = $defaultStatus ? $defaultStatus->name : $validated['status'] ?? 'scheduled-open';
+
+    $validated['created_by'] = auth()->id();
+    $validated['edited_by'] = auth()->id();
+
+    // Log after prefix generation
+    \Illuminate\Support\Facades\Log::info('AppointmentController@store: Prefix generated', [
+      'prefix' => $prefix,
+      'ticket_number' => $ticketNumber,
+      'appointment_ticket_id' => $validated['appointment_ticket_id'],
+    ]);
+
+    $appointment = Appointment::create($validated);
+
+    // Log after successful save
+    \Illuminate\Support\Facades\Log::info('AppointmentController@store: Appointment created successfully', [
+      'appointment_id' => $appointment->id,
+      'appointment_ticket_id' => $appointment->appointment_ticket_id,
+    ]);
+
+    // Record initial status in status history
+    AppointmentStatusHistory::create([
+      'appointment_id' => $appointment->id,
+      'previous_status' => null,
+      'new_status' => $appointment->status,
+      'notes' => 'Initial status set during appointment creation',
+      'changed_by' => auth()->id(),
+    ]);
+
+    \Log::info('Initial appointment status recorded', [
+      'appointment_id' => $appointment->id,
+      'status' => $appointment->status,
+      'created_by' => auth()->id(),
+    ]);
+
+    // Count how many appointments with this ticket ID exist
+    $duplicateCount = Appointment::where('appointment_ticket_id', $appointment->appointment_ticket_id)->count();
+    \Illuminate\Support\Facades\Log::info('AppointmentController@store: Number of appointments with this ticket ID', [
+      'appointment_ticket_id' => $appointment->appointment_ticket_id,
+      'count' => $duplicateCount,
+    ]);
+
+    // Record history
+    if (class_exists('\Modules\Appointment\Models\AppointmentHistory')) {
+      \Modules\Appointment\Models\AppointmentHistory::create([
+        'appointment_id' => $appointment->id,
+        'action' => 'created',
+        'ticket_id' => $appointment->appointment_ticket_id,
+        'action_by' => auth()->id(),
+        'status' => $appointment->status,
+        'account_number' => $appointment->account_number,
+        'priority' => $appointment->priority,
+        'appointment_type_id' => $appointment->appointment_type_id,
+        'olt_id' => $appointment->olt_id,
+        'slot_id' => $appointment->slot_id,
+      ]);
+    }
+
+    // Create notifications
+    $this->notificationService->notifyAppointmentCreated($appointment);
+
+    return redirect()
+      ->route('appointment.appointments.index')
+      ->with('success', 'Appointment created successfully.');
+  }
+
+  /**
+   * Display the specified resource.
+   */
+  public function show($id)
+  {
+    $appointment = Appointment::with([
+      'type',
+      'subType',
+      'creator',
+      'editor',
+      'assignedTeam',
+      'escalatedTeam',
+      'closer',
+      'teamType',
+      'subTeamType',
+      'statusHistory',
+      'statusHistory.user',
+    ])->findOrFail($id);
+
+    // Get status history with related status records for colors
+    $statusHistory = AppointmentStatusHistory::where('appointment_id', $id)
+      ->with(['user', 'previousStatusRecord', 'newStatusRecord'])
+      ->orderBy('created_at', 'desc')
+      ->get();
+
+    return view('appointment::appointment.show', compact('appointment', 'statusHistory'));
+  }
+
+  /**
+   * Show the form for editing the specified resource.
+   */
+  public function edit($id)
+  {
+    $appointment = Appointment::findOrFail($id);
+    $types = AppointmentType::active()->get();
+    $teamTypes = TeamType::active()->get();
+    $subTypes = SubAppointmentType::where('appointment_type_id', $appointment->type_id)
+      ->active()
+      ->pluck('sub_type_name', 'id');
+    $statuses = AppointmentStatus::active()
+      ->orderBy('sort_order')
+      ->get();
+
+    return view('appointment::appointment.edit', compact('appointment', 'types', 'teamTypes', 'subTypes', 'statuses'));
+  }
+
+  /**
+   * Update the specified resource in storage.
+   */
+  public function update(Request $request, $id)
+  {
+    // Enhanced debugging - log request method, URL and data
+    \Log::info('Starting appointment update process', [
+      'method' => $request->method(),
+      'url' => $request->url(),
+      'appointment_id' => $id,
+      'user_id' => auth()->id(),
+      'request_data' => $request->all(),
+    ]);
+
+    try {
+      $appointment = Appointment::findOrFail($id);
+      \Log::debug('Appointment found', ['appointment' => $appointment->toArray()]);
+
+      // Validate the request - removed type_id requirement since we'll use the existing appointment data
+      $validatedData = $request->validate([
+        'account_number' => 'required|string|max:50',
+        'appointment_type_id' => 'required|exists:sub_appointment_types,id',
+        'priority' => 'required|in:High,Medium,Low',
+        'scheduled_date' => 'required|date',
+        'scheduled_time' => 'required',
+        'appointment_location' => 'required|string|max:255',
+        'appointment_venue' => 'required|string|max:255',
+        'description_notes' => 'required|string',
+        'status' => 'required|exists:appointment_statuses,name',
+        'team_type_id' => 'required|exists:team_types,id',
+        'sub_team_type_id' => 'required|exists:sub_team_types,id',
+        'assigned_team_id' => 'nullable|exists:teams,id',
+        'olt_id' => 'nullable|string|max:50',
+        'slot_id' => 'nullable|string|max:50',
+      ]);
+
+      // Keep the existing escalated_team_id if it's not in the request
+      if (!$request->has('escalated_team_id')) {
+        $validatedData['escalated_team_id'] = $appointment->escalated_team_id;
+      }
+
+      // Use the existing appointment_id from the appointment model
+      // This preserves the relationship with appointment_types
+      $validatedData['appointment_id'] = $appointment->appointment_id;
+
+      \Log::debug('Validation passed', ['validated_data' => $validatedData]);
+
+      // Add editor information
+      $validatedData['edited_by'] = auth()->id();
+      \Log::debug('Added editor info', ['edited_by' => auth()->id()]);
+
+      // Handle appointment completion
+      if ($request->status === 'Scheduled-Closed' && $appointment->status !== 'Scheduled-Closed') {
+        $validatedData['completed_date'] = now()->toDateString();
+        $validatedData['completed_time'] = now()->toTimeString();
+        $validatedData['closed_by'] = auth()->id();
+        $validatedData['closed_at'] = now();
+        \Log::info('Marking appointment as completed', [
+          'completed_date' => $validatedData['completed_date'],
+          'completed_time' => $validatedData['completed_time'],
+        ]);
+      }
+
+      // Log original data
+      $originalData = $appointment->getOriginal();
+      \Log::debug('Original appointment data', $originalData);
+      \Log::debug('New appointment data', $validatedData);
+
+      // Find and log changed fields
+      $changes = [];
+      foreach ($validatedData as $key => $value) {
+        if (!array_key_exists($key, $originalData) || $originalData[$key] != $value) {
+          $changes[$key] = [
+            'from' => $originalData[$key] ?? null,
+            'to' => $value,
+          ];
+        }
+      }
+
+      \Log::info('Detected changes', ['changes' => $changes]);
+
+      if (empty($changes)) {
+        \Log::warning('No changes detected in the update request');
+        return redirect()
+          ->back()
+          ->with('info', 'No changes were made.');
+      }
+
+      // Store the previous status before updating
+      $previousStatus = $appointment->status;
+
+      // Update the appointment with validated data
+      // Fix for SQL error: ensure status is properly quoted by using the model's update method
+      // instead of directly passing the array to update
+      foreach ($validatedData as $key => $value) {
+        $appointment->$key = $value;
+      }
+
+      // Track status changes if the status has changed
+      if (isset($validatedData['status']) && $previousStatus !== $validatedData['status']) {
+        AppointmentStatusHistory::create([
+          'appointment_id' => $appointment->id,
+          'previous_status' => $previousStatus,
+          'new_status' => $validatedData['status'],
+          'notes' => $request->input('status_change_notes') ?? 'Status updated during appointment edit',
+          'changed_by' => auth()->id(),
+        ]);
+
+        \Log::info('Appointment status changed', [
+          'appointment_id' => $appointment->id,
+          'from' => $previousStatus,
+          'to' => $validatedData['status'],
+          'changed_by' => auth()->id(),
+        ]);
+      }
+      $appointment->save();
+      \Log::info('Appointment updated successfully', ['appointment_id' => $appointment->id]);
+
+      // Record history
+      if (class_exists('\Modules\Appointment\Models\AppointmentHistory')) {
+        \Modules\Appointment\Models\AppointmentHistory::create([
+          'appointment_id' => $appointment->id,
+          'action' => 'updated',
+          'ticket_id' => $appointment->appointment_ticket_id,
+          'action_by' => auth()->id(),
+          'status' => $appointment->status,
+          'account_number' => $appointment->account_number,
+          'priority' => $appointment->priority,
+          'appointment_type_id' => $appointment->appointment_type_id,
+          'team_type_id' => $appointment->team_type_id,
+          'sub_team_type_id' => $appointment->sub_team_type_id,
+          'assigned_team_id' => $appointment->assigned_team_id,
+          'escalated_team_id' => $appointment->escalated_team_id,
+          'completed_date' => $appointment->completed_date,
+          'completed_time' => $appointment->completed_time,
+          'closed_by' => $appointment->closed_by,
+          'closed_at' => $appointment->closed_at,
+          'edited_by' => $appointment->edited_by,
+          'edited_at' => $appointment->edited_at,
+          'description' => $appointment->description_notes,
+          'appointment_location' => $appointment->appointment_location,
+          'appointment_venue' => $appointment->appointment_venue,
+          'olt_id' => $appointment->olt_id,
+          'slot_id' => $appointment->slot_id,
+        ]);
+      }
+
+      // Create notifications using the notification service
+      $this->notificationService->notifyAppointmentUpdated($appointment, auth()->user());
+
+      return redirect()
+        ->route('appointment.appointments.show', $appointment->id)
+        ->with('success', 'Appointment updated successfully.');
+    } catch (\Illuminate\Validation\ValidationException $e) {
+      \Log::error('Validation failed', [
+        'errors' => $e->errors(),
+        'input' => $request->all(),
+      ]);
+      throw $e;
+    } catch (\Exception $e) {
+      \Log::error('Error updating appointment', [
+        'error' => $e->getMessage(),
+        'trace' => $e->getTraceAsString(),
+        'appointment_id' => $id,
+        'user_id' => auth()->id(),
+      ]);
+
+      return redirect()
+        ->back()
+        ->withInput()
+        ->with('error', 'An error occurred while updating the appointment. Please try again.')
+        ->withErrors(['exception' => $e->getMessage()]);
+    }
+  }
+
+  /**
+   * Remove the specified resource from storage.
+   */
+  public function destroy($id)
+  {
+    $appointment = Appointment::findOrFail($id);
+
+    // Prevent deletion of completed appointments
+    if ($appointment->status === 'Completed') {
+      return redirect()
+        ->back()
+        ->with('error', 'Cannot delete a completed appointment.');
+    }
+
+    $appointment->delete();
+
+    return redirect()
+      ->route('appointment.appointments.index')
+      ->with('success', 'Appointment deleted successfully.');
+  }
+
+  /**
+   * Show the form for editing an assigned appointment.
+   */
+  public function editAssigned($id)
+  {
+    $appointment = Appointment::findOrFail($id);
+    $types = AppointmentType::active()->get();
+    $teamTypes = TeamType::active()->get();
+    $subTypes = SubAppointmentType::where('appointment_type_id', $appointment->type_id)
+      ->active()
+      ->pluck('sub_type_name', 'id');
+    $finalReasons = AppointmentFinalReason::all();
+    // Get active sub departments - check common status values
+    $subDepartments = SubDepartment::whereIn('sub_department_status', ['Active', 'active', '1', 1])->get();
+
+    // If no active ones found, get all (fallback)
+    if ($subDepartments->isEmpty()) {
+      $subDepartments = SubDepartment::all();
+    }
+
+    return view(
+      'appointment::appointment.edit_assigned',
+      compact('appointment', 'types', 'teamTypes', 'subTypes', 'finalReasons', 'subDepartments')
+    );
+  }
+
+  /**
+   * Update the specified assigned appointment in storage.
+   */
+  public function updateAssigned(Request $request, $id)
+  {
+    \Log::info('Starting assigned appointment update process', ['appointment_id' => $id]);
+
+    try {
+      $appointment = Appointment::findOrFail($id);
+      \Log::debug('Appointment found', ['appointment' => $appointment->toArray()]);
+
+      // Log all incoming request data
+      \Log::debug('Request data received:', $request->all());
+
+      // Validate the request
+      $validatedData = $request->validate([
+        'status' => 'required',
+        'optical_level' => 'nullable|numeric',
+        'final_reason' => 'nullable|exists:appointment_final_reasons,id',
+        'comment' => 'nullable|string',
+        'sub_department_id' => 'nullable|exists:sub_departments,id',
+        'rescheduled_date' => 'nullable|date',
+        'rescheduled_time' => 'nullable',
+        'closing_reason' => 'nullable|string',
+        'notes' => 'nullable|string',
+        'olt_id' => 'nullable|string|max:50',
+        'slot_id' => 'nullable|string|max:50',
+      ]);
+
+      \Log::debug('Validation passed', ['validated_data' => $validatedData]);
+
+      // Add editor information
+      $validatedData['edited_by'] = auth()->id();
+      \Log::debug('Added editor info', ['edited_by' => auth()->id()]);
+
+      // Handle appointment completion
+      if ($request->status === 'Scheduled-Closed' && $appointment->status !== 'Scheduled-Closed') {
+        $validatedData['completed_date'] = now()->toDateString();
+        $validatedData['completed_time'] = now()->toTimeString();
+        $validatedData['closed_by'] = auth()->id();
+        $validatedData['closed_at'] = now();
+        \Log::info('Marking appointment as completed', [
+          'completed_date' => $validatedData['completed_date'],
+          'completed_time' => $validatedData['completed_time'],
+        ]);
+      }
+
+      // Map final_reason to final_reason_id
+      if (isset($validatedData['final_reason'])) {
+        $validatedData['final_reason_id'] = $validatedData['final_reason'];
+        unset($validatedData['final_reason']);
+      }
+
+      // Remove non-existent columns from validatedData
+      if (isset($validatedData['reschedule_reason'])) {
+        unset($validatedData['reschedule_reason']);
+      }
+      if (isset($validatedData['cancelled_reason'])) {
+        unset($validatedData['cancelled_reason']);
+      }
+
+      // Log original data
+      $originalData = $appointment->getOriginal();
+      \Log::debug('Original appointment data', $originalData);
+      \Log::debug('New appointment data', $validatedData);
+
+      // Find and log changed fields
+      $changes = [];
+      foreach ($validatedData as $key => $value) {
+        if (!array_key_exists($key, $originalData) || $originalData[$key] != $value) {
+          $changes[$key] = [
+            'from' => $originalData[$key] ?? null,
+            'to' => $value,
+          ];
+        }
+      }
+
+      \Log::info('Detected changes', ['changes' => $changes]);
+
+      if (empty($changes)) {
+        \Log::warning('No changes detected in the update request');
+        return redirect()
+          ->back()
+          ->with('info', 'No changes were made.');
+      }
+
+      // Update the appointment
+      // Fix for SQL error: ensure status is properly quoted by using the model's update method
+      // instead of directly passing the array to update
+      foreach ($validatedData as $key => $value) {
+        $appointment->$key = $value;
+      }
+      $appointment->save();
+      \Log::info('Appointment updated successfully', ['appointment_id' => $appointment->id]);
+
+      // Record history if there are changes
+      if (!empty($changes) && class_exists('\Modules\Appointment\Models\AppointmentHistory')) {
+        try {
+          $history = \Modules\Appointment\Models\AppointmentHistory::create([
+            'appointment_id' => $appointment->id,
+            'ticket_id' => $appointment->appointment_ticket_id,
+            'escalation_ticket_id' => $appointment->escalation_ticket_id,
+            'status' => $appointment->status,
+            'action_by' => auth()->id(),
+            'sub_department_id' => $appointment->sub_department_id,
+            'team_type_id' => $appointment->team_type_id,
+            'sub_team_type_id' => $appointment->sub_team_type_id,
+            'comment' => $appointment->comment,
+            'rescheduled_date' => $appointment->rescheduled_date,
+            'rescheduled_time' => $appointment->rescheduled_time,
+            'final_reason_id' => $appointment->final_reason_id,
+            'olt_id' => $appointment->olt_id,
+            'slot_id' => $appointment->slot_id,
+            'action_description' => 'Appointment updated via assigned edit form',
+            'changes' => json_encode($changes),
+          ]);
+          \Log::debug('History record created', ['history_id' => $history->id]);
+        } catch (\Exception $e) {
+          \Log::error('Failed to create history record', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+          ]);
+        }
+      }
+
+      // Create notifications using the notification service
+      $this->notificationService->notifyAppointmentUpdated($appointment, auth()->user());
+
+      return redirect()
+        ->route('appointment.appointments.show', $appointment->id)
+        ->with('success', 'Appointment updated successfully.');
+    } catch (\Illuminate\Validation\ValidationException $e) {
+      \Log::error('Validation failed', [
+        'errors' => $e->errors(),
+        'input' => $request->all(),
+      ]);
+      throw $e;
+    } catch (\Exception $e) {
+      \Log::error('Error updating appointment', [
+        'error' => $e->getMessage(),
+        'trace' => $e->getTraceAsString(),
+        'appointment_id' => $id,
+        'user_id' => auth()->id(),
+      ]);
+
+      return redirect()
+        ->back()
+        ->withInput()
+        ->with('error', 'An error occurred while updating the appointment. Please try again.')
+        ->withErrors(['exception' => $e->getMessage()]);
+    }
+  }
+
+  /**
+   * Get sub types for the given appointment type
+   *
+   * @param  int  $type_id
+   * @return \Illuminate\Http\JsonResponse
+   */
+  public function getSubTypes($type_id)
+  {
+    try {
+      \Log::info('Fetching sub-types for type_id: ' . $type_id);
+
+      $subTypes = SubAppointmentType::where('appointment_type_id', $type_id)
+        ->active()
+        ->select('id', 'sub_type_name')
+        ->get();
+
+      \Log::info('Found sub-types:', $subTypes->toArray());
+
+      return response()->json($subTypes);
+    } catch (\Exception $e) {
+      \Log::error('Error fetching sub-types: ' . $e->getMessage());
+      return response()->json(
+        [
+          'error' => 'Failed to load sub-types. Please try again.',
+          'details' => $e->getMessage(),
+        ],
+        500
+      );
+    }
+  }
+
+  /**
+   * Get slots for the given OLT
+   *
+   * @param  int  $olt_id
+   * @return \Illuminate\Http\JsonResponse
+   */
+  public function getSlots($olt_id)
+  {
+    try {
+      \Log::info('Fetching slots for olt_id: ' . $olt_id);
+
+      $slots = OltSlot::where('olt_id', $olt_id)
+        ->active()
+        ->select('id', 'slot_number', 'slot_type')
+        ->orderBy('slot_number')
+        ->get();
+
+      // Format the slots for display
+      $formattedSlots = $slots->map(function ($slot) {
+        return [
+          'id' => $slot->id,
+          'name' => "Slot {$slot->slot_number} ({$slot->slot_type})",
+          'slot_number' => $slot->slot_number,
+          'slot_type' => $slot->slot_type,
+        ];
+      });
+
+      \Log::info('Found slots:', $formattedSlots->toArray());
+
+      return response()->json($formattedSlots);
+    } catch (\Exception $e) {
+      \Log::error('Error fetching slots: ' . $e->getMessage());
+      return response()->json(
+        [
+          'error' => 'Failed to load slots. Please try again.',
+          'details' => $e->getMessage(),
+        ],
+        500
+      );
+    }
+  }
+
+  /**
+   * Infrastructure New - List all assigned appointments with status 'Escalated-Infrastructure'
+   */
+  public function infrastructureNew(Request $request)
+  {
+    try {
+      // Get appointments with Infrastructure status that are assigned, including OLT relationship
+      $appointments = Appointment::with(['assignedTeam', 'creator', 'olt'])
+        ->where('status', 'escalated-infrastructure')
+        ->orderBy('created_at', 'desc')
+        ->get();
+
+      \Log::info('Infrastructure New - Found ' . $appointments->count() . ' appointments');
+
+      return view('appointment::site-visit.infrastructure.new', [
+        'appointments' => $appointments,
+      ]);
+    } catch (\Exception $e) {
+      \Log::error('Infrastructure New Error: ' . $e->getMessage());
+      return back()->with('error', 'Unable to load infrastructure appointments: ' . $e->getMessage());
+    }
+  }
+
+  /**
+   * NOC New - List all assigned appointments with status 'Escalated-NOC'
+   */
+  public function nocNew(Request $request)
+  {
+    try {
+      // Get appointments with NOC status that are assigned, including OLT relationship
+      $appointments = Appointment::with(['assignedTeam', 'creator', 'olt'])
+        ->where('status', 'escalated-noc')
+        ->orderBy('created_at', 'desc')
+        ->get();
+
+      return view('appointment::site-visit.noc.new', [
+        'appointments' => $appointments,
+      ]);
+    } catch (\Exception $e) {
+      \Log::error('NOC New Error: ' . $e->getMessage());
+      return back()->with('error', 'Unable to load NOC appointments: ' . $e->getMessage());
+    }
+  }
+
+  /**
+   * Design New - List all assigned appointments with status 'Escalated-Design'
+   */
+  public function designNew(Request $request)
+  {
+    try {
+      // Get appointments with Design status that are assigned, including OLT relationship
+      $appointments = Appointment::with(['assignedTeam', 'creator', 'olt'])
+        ->where('status', 'escalated-design')
+        ->orderBy('created_at', 'desc')
+        ->get();
+
+      return view('appointment::site-visit.design.new', [
+        'appointments' => $appointments,
+      ]);
+    } catch (\Exception $e) {
+      \Log::error('Design New Error: ' . $e->getMessage());
+      return back()->with('error', 'Unable to load design appointments: ' . $e->getMessage());
+    }
+  }
+}

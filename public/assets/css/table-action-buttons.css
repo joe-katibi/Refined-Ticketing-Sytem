@@ -1,0 +1,115 @@
+/* Table Action Buttons - Smaller Size Override */
+
+/* Make all dropdown toggle buttons in tables smaller */
+table .btn.dropdown-toggle,
+.table .btn.dropdown-toggle,
+.dataTables_wrapper .btn.dropdown-toggle {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    line-height: 1.2;
+    min-width: auto;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Make all action buttons in table cells smaller */
+table td .btn,
+.table td .btn,
+.dataTables_wrapper td .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    line-height: 1.2;
+    min-height: 32px;
+}
+
+/* Specific styling for dropdown toggle buttons with icons */
+table .btn.dropdown-toggle i,
+.table .btn.dropdown-toggle i,
+.dataTables_wrapper .btn.dropdown-toggle i {
+    font-size: 0.875rem;
+    margin: 0;
+}
+
+/* Make action buttons in responsive card views smaller too */
+.mobile-card .btn,
+.responsive-card .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    line-height: 1.2;
+}
+
+/* Override for buttons in action columns specifically */
+td:last-child .btn,
+th:last-child .btn,
+.actions-column .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    min-width: auto;
+}
+
+/* Small buttons in filter sections should remain small */
+.card-header .btn-xs,
+.filter-section .btn-xs,
+.search-form .btn-xs {
+    padding: 0.125rem 0.375rem;
+    font-size: 0.6875rem;
+}
+
+/* Ensure dropdown menus align properly with smaller buttons */
+table .dropdown-menu,
+.table .dropdown-menu,
+.dataTables_wrapper .dropdown-menu {
+    min-width: 140px;
+    font-size: 0.8125rem;
+}
+
+/* Action button groups in tables */
+table .btn-group .btn,
+.table .btn-group .btn,
+.dataTables_wrapper .btn-group .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+}
+
+/* Responsive adjustments for mobile */
+@media (max-width: 767.98px) {
+    table .btn.dropdown-toggle,
+    .table .btn.dropdown-toggle,
+    .dataTables_wrapper .btn.dropdown-toggle {
+        width: 36px;
+        height: 36px;
+        padding: 0.375rem;
+    }
+    
+    table td .btn,
+    .table td .btn,
+    .dataTables_wrapper td .btn {
+        padding: 0.375rem 0.625rem;
+        font-size: 0.8125rem;
+        min-height: 36px;
+    }
+}
+
+/* Ensure icons in small buttons are properly sized */
+table .btn i,
+.table .btn i,
+.dataTables_wrapper .btn i {
+    font-size: 0.875rem;
+}
+
+/* Fix for button spacing in action columns */
+table td .btn + .btn,
+.table td .btn + .btn,
+.dataTables_wrapper td .btn + .btn {
+    margin-left: 0.25rem;
+}
+
+/* Override for any remaining large buttons in tables */
+table .btn:not(.btn-lg):not(.btn-xl),
+.table .btn:not(.btn-lg):not(.btn-xl),
+.dataTables_wrapper .btn:not(.btn-lg):not(.btn-xl) {
+    max-height: 32px;
+}

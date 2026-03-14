@@ -1,0 +1,172 @@
+/**
+ * Dark Mode CSS Override
+ * This file contains styles that override the default light theme with dark theme colors
+ */
+
+:root.dark-mode {
+  --bs-body-bg: #2b2c40;
+  --bs-body-color: #a3a4cc;
+  --bs-border-color: #444564;
+  --bs-heading-color: #cbcbe2;
+  --bs-link-color: #7983ff;
+  --bs-link-hover-color: #6571ff;
+  --bs-card-bg: #323249;
+  --bs-card-border-color: #444564;
+  --bs-table-bg: #323249;
+  --bs-table-color: #a3a4cc;
+  --bs-table-border-color: #444564;
+  --bs-table-striped-bg: #3a3a57;
+  --bs-table-hover-bg: #444564;
+  --bs-input-bg: #323249;
+  --bs-input-color: #a3a4cc;
+  --bs-input-border-color: #444564;
+  --bs-dropdown-bg: #323249;
+  --bs-dropdown-color: #a3a4cc;
+  --bs-dropdown-link-color: #a3a4cc;
+  --bs-dropdown-link-hover-bg: #444564;
+  --bs-dropdown-link-hover-color: #cbcbe2;
+  --bs-navbar-bg: #323249;
+  --bs-navbar-color: #a3a4cc;
+  --bs-sidebar-bg: #323249;
+  --bs-sidebar-color: #a3a4cc;
+  --bs-btn-default-bg: #444564;
+  --bs-btn-default-color: #cbcbe2;
+}
+
+/* Apply dark mode to body and main elements */
+.dark-mode body {
+  background-color: var(--bs-body-bg);
+  color: var(--bs-body-color);
+}
+
+/* Cards */
+.dark-mode .card {
+  background-color: var(--bs-card-bg);
+  border-color: var(--bs-card-border-color);
+}
+
+/* Tables */
+.dark-mode .table {
+  color: var(--bs-table-color);
+  border-color: var(--bs-table-border-color);
+}
+
+.dark-mode .table>:not(caption)>*>* {
+  background-color: var(--bs-table-bg);
+  color: var(--bs-table-color);
+  border-bottom-color: var(--bs-table-border-color);
+}
+
+.dark-mode .table-striped>tbody>tr:nth-of-type(odd)>* {
+  background-color: var(--bs-table-striped-bg);
+}
+
+.dark-mode .table-hover>tbody>tr:hover>* {
+  background-color: var(--bs-table-hover-bg);
+}
+
+/* Forms */
+.dark-mode .form-control,
+.dark-mode .form-select {
+  background-color: var(--bs-input-bg);
+  color: var(--bs-input-color);
+  border-color: var(--bs-input-border-color);
+}
+
+/* Dropdowns */
+.dark-mode .dropdown-menu {
+  background-color: var(--bs-dropdown-bg);
+  color: var(--bs-dropdown-color);
+  border-color: var(--bs-border-color);
+}
+
+.dark-mode .dropdown-item {
+  color: var(--bs-dropdown-link-color);
+}
+
+.dark-mode .dropdown-item:hover,
+.dark-mode .dropdown-item:focus {
+  background-color: var(--bs-dropdown-link-hover-bg);
+  color: var(--bs-dropdown-link-hover-color);
+}
+
+/* Navbar */
+.dark-mode .navbar {
+  background-color: var(--bs-navbar-bg);
+  color: var(--bs-navbar-color);
+}
+
+/* Sidebar */
+.dark-mode .bg-menu-theme {
+  background-color: var(--bs-sidebar-bg) !important;
+  color: var(--bs-sidebar-color) !important;
+}
+
+.dark-mode .menu-vertical .menu-item.active > .menu-link {
+  color: #7983ff !important;
+  background-color: rgba(105, 108, 255, 0.16) !important;
+}
+
+.dark-mode .menu-vertical .menu-item .menu-link:hover {
+  background-color: rgba(124, 125, 182, 0.1) !important;
+}
+
+/* Buttons */
+.dark-mode .btn-default {
+  background-color: var(--bs-btn-default-bg);
+  color: var(--bs-btn-default-color);
+}
+
+/* DataTables specific */
+.dark-mode .dataTables_wrapper .dataTables_length,
+.dark-mode .dataTables_wrapper .dataTables_filter,
+.dark-mode .dataTables_wrapper .dataTables_info,
+.dark-mode .dataTables_wrapper .dataTables_processing,
+.dark-mode .dataTables_wrapper .dataTables_paginate {
+  color: var(--bs-body-color);
+}
+
+.dark-mode .dataTables_wrapper .dataTables_paginate .paginate_button {
+  color: var(--bs-body-color) !important;
+}
+
+.dark-mode .dataTables_wrapper .dataTables_paginate .paginate_button.current,
+.dark-mode .dataTables_wrapper .dataTables_paginate .paginate_button.current:hover {
+  background: var(--bs-dropdown-link-hover-bg);
+  color: var(--bs-dropdown-link-hover-color) !important;
+  border-color: var(--bs-border-color);
+}
+
+/* Borders */
+.dark-mode .border,
+.dark-mode .border-top,
+.dark-mode .border-end,
+.dark-mode .border-bottom,
+.dark-mode .border-start {
+  border-color: var(--bs-border-color) !important;
+}
+
+/* Text colors */
+.dark-mode .text-body {
+  color: var(--bs-body-color) !important;
+}
+
+.dark-mode .text-muted {
+  color: #7d7fa9 !important;
+}
+
+.dark-mode h1, .dark-mode h2, .dark-mode h3, 
+.dark-mode h4, .dark-mode h5, .dark-mode h6,
+.dark-mode .h1, .dark-mode .h2, .dark-mode .h3, 
+.dark-mode .h4, .dark-mode .h5, .dark-mode .h6 {
+  color: var(--bs-heading-color);
+}
+
+/* Links */
+.dark-mode a {
+  color: var(--bs-link-color);
+}
+
+.dark-mode a:hover {
+  color: var(--bs-link-hover-color);
+}

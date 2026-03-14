@@ -1,0 +1,72 @@
+=== EscalationReportExport Test Started at 2025-08-22 07:57:54 ===
+Testing EscalationReportExport...
+EscalationReportExport class found.
+
+Testing report type: escalations
+  - Creating export instance...
+  - Export instance created successfully
+  - Retrieving data collection...
+  - Successfully retrieved data for escalations report
+  - Number of records: 1
+  - Sample data (first record):
+    - id: 1
+    - escalation_id: 1
+    - ticket_id: ESC-1
+    - account_number: SF0001
+    - description: LOS
+    - category_name: Internet
+    - sub_category_name: LOS flashing red
+    - status: Scheduled-Open
+    - priority: low
+    - sub_department_name: Service Support
+    - closed_by_user: Super Admin
+    - created_at: 2025-08-19 08:00:35
+    - closed_at: 
+  - Exporting to Excel: test_escalations_report_20250822075755.xlsx
+  - Successfully exported to D:\savannah\Ticketing\storage\app/public/test_escalations_report_20250822075755.xlsx
+
+Testing report type: sla
+  - Creating export instance...
+  - Export instance created successfully
+  - Retrieving data collection...
+  - Successfully retrieved data for sla report
+  - Number of records: 1
+  - Sample data (first record):
+    - date: 2025-08-19
+    - total_escalations: 1
+    - closed_escalations: 0
+    - closed_within_sla: 0
+    - closed_outside_sla: 0
+    - sla_compliance_percentage: 0
+  - Exporting to Excel: test_sla_report_20250822075801.xlsx
+  - Successfully exported to D:\savannah\Ticketing\storage\app/public/test_sla_report_20250822075801.xlsx
+
+Testing report type: productivity
+  - Creating export instance...
+  - Export instance created successfully
+  - Retrieving data collection...
+  - Successfully retrieved data for productivity report
+  - Number of records: 0
+  - No data records found for this report type
+  - Exporting to Excel: test_productivity_report_20250822075801.xlsx
+  - Successfully exported to D:\savannah\Ticketing\storage\app/public/test_productivity_report_20250822075801.xlsx
+
+Testing report type: sub_category
+  - Creating export instance...
+  - Export instance created successfully
+  - Retrieving data collection...
+  - Successfully retrieved data for sub_category report
+  - Number of records: 1
+  - Sample data (first record):
+    - category_name: Internet
+    - subcategory_name: LOS flashing red
+    - total_escalations: 1
+    - closed_escalations: 0
+    - closed_within_sla: 0
+    - avg_resolution_time: 
+    - sla_compliance_percentage: 0
+  - Exporting to Excel: test_sub_category_report_20250822075801.xlsx
+  - Successfully exported to D:\savannah\Ticketing\storage\app/public/test_sub_category_report_20250822075801.xlsx
+
+Test completed.
+Log file created at: D:\savannah\Ticketing\storage\logs/escalation_export_test.log

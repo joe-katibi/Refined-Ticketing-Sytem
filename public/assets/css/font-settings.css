@@ -1,0 +1,61 @@
+/* Global Font Size Settings */
+
+/* Small Font Size (12px) */
+.text-xs * {
+  font-size: 0.75rem !important;
+}
+
+.text-xs {
+  font-size: 0.75rem !important;
+}
+
+/* Medium Font Size (13px) - Default */
+.text-sm * {
+  font-size: 0.8125rem !important;
+}
+
+.text-sm {
+  font-size: 0.8125rem !important;
+}
+
+/* Large Font Size (14px) */
+.text-base * {
+  font-size: 0.875rem !important;
+}
+
+.text-base {
+  font-size: 0.875rem !important;
+}
+
+/* Override for specific elements that should maintain their size */
+.text-xs .navbar-brand *,
+.text-sm .navbar-brand *,
+.text-base .navbar-brand * {
+  font-size: inherit !important;
+}
+
+.text-xs .btn,
+.text-sm .btn,
+.text-base .btn {
+  font-size: inherit !important;
+}
+
+/* Ensure form elements inherit the global font size */
+.text-xs input, .text-xs select, .text-xs textarea,
+.text-sm input, .text-sm select, .text-sm textarea,
+.text-base input, .text-base select, .text-base textarea {
+  font-size: inherit !important;
+}
+
+/* Table font sizes */
+.text-xs table,
+.text-sm table,
+.text-base table {
+  font-size: inherit !important;
+}
+
+.text-xs .table td, .text-xs .table th,
+.text-sm .table td, .text-sm .table th,
+.text-base .table td, .text-base .table th {
+  font-size: inherit !important;
+}

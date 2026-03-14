@@ -1,0 +1,228 @@
+@php
+$configData = Helper::appClasses();
+@endphp
+
+@extends('layouts/layoutMaster')
+
+@section('title', 'My Outages')
+
+@section('content')
+<div class="container-xxxl flex-grow-1 container-p-y">
+    <!-- Header -->
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h4 class="fw-bold py-3 mb-2">
+                    <span class="text-muted fw-light">Outages /</span> My Outages
+                </h4>
+                <div class="d-flex gap-2">
+                    <a href="{{ route('outages.create') }}" class="btn btn-primary btn-xs">
+                        <i class="bx bx-plus me-1"></i> Create Outage
+                    </a>
+                    <a href="{{ route('outage-dashboard.index') }}" class="btn btn-info btn-xs">
+                        <i class="bx bx-bar-chart-alt-2 me-1"></i> Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters Card -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title m-0">
+                        <i class="bx bx-filter-alt me-2"></i>Filters
+                    </h5>
+                    <button class="btn btn-outline-secondary btn-xs" type="button" data-bs-toggle="collapse" data-bs-target="#filtersCollapse" aria-expanded="true" aria-controls="filtersCollapse">
+                        <i class="bx bx-chevron-up"></i>
+                    </button>
+                </div>
+                <div class="collapse show" id="filtersCollapse">
+                    <div class="card-body">
+                        <form method="GET" action="{{ route('outages.my-outages') }}">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label for="search" class="form-label">Search</label>
+                                    <input type="text" class="form-control" id="search" name="search" 
+                                           value="{{ request('search') }}" 
+                                           placeholder="Search by title, ticket number, or description">
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="status" class="form-label">Status</label>
+                                    <select class="form-select" id="status" name="status">
+                                        <option value="">All Status</option>
+                                        @foreach($statusOptions as $key => $label)
+                                            <option value="{{ $key }}" {{ request('status') == $key ? 'selected' : '' }}>
+                                                {{ $label }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label for="priority" class="form-label">Priority</label>
+                                    <select class="form-select" id="priority" name="priority">
+                                        <option value="">All Priorities</option>
+                                        @foreach($priorities as $priority)
+                                            <option value="{{ $priority }}" {{ request('priority') == $priority ? 'selected' : '' }}>
+                                                {{ $priority }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">&nbsp;</label>
+                                    <div class="d-flex gap-2">
+                                        <button type="submit" class="btn btn-primary btn-xs">
+                                            <i class="bx bx-search me-1"></i> Filter
+                                        </button>
+                                        <a href="{{ route('outages.my-outages') }}" class="btn btn-outline-secondary btn-xs">
+                                            <i class="bx bx-refresh me-1"></i> Clear
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Outages List -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title m-0">
+                        <i class="bx bx-user me-2"></i>My Outages ({{ $outages->total() }})
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    @if($outages->count() > 0)
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Ticket #</th>
+                                        <th>Title</th>
+                                        <th>Status</th>
+                                        <th>Priority</th>
+                                        <th>Assignment</th>
+                                        <th>Created</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($outages as $outage)
+                                        <tr>
+                                            <td>
+                                                <span class="fw-bold text-primary">{{ $outage->ticket_number }}</span>
+                                                <br>
+                                                <small class="text-muted">{{ $outage->ticket_type_display }}</small>
+                                            </td>
+                                            <td>
+                                                <div class="fw-medium">{{ Str::limit($outage->title, 50) }}</div>
+                                                @if($outage->description)
+                                                    <small class="text-muted">{{ Str::limit($outage->description, 80) }}</small>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                <span class="badge badge-xs bg-{{ 
+                                                    $outage->status == 'support-closed' ? 'success' : 
+                                                    ($outage->status == 'infra-resolved' ? 'info' : 
+                                                    ($outage->status == 'noc-rejected' ? 'danger' : 'warning')) 
+                                                }}">
+                                                    {{ $outage->status_display }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="badge badge-xs bg-{{ 
+                                                    $outage->priority == 'Critical' ? 'danger' : 
+                                                    ($outage->priority == 'High' ? 'warning' : 
+                                                    ($outage->priority == 'Medium' ? 'info' : 'secondary')) 
+                                                }}">
+                                                    {{ $outage->priority }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                @if($outage->assigned_to == auth()->id())
+                                                    <span class="badge badge-xs bg-primary">
+                                                        <i class="bx bx-user me-1"></i>Assigned to Me
+                                                    </span>
+                                                @elseif($outage->assignedTeam && $outage->assignedTeam->id == auth()->user()->team_id)
+                                                    <span class="badge badge-xs bg-info">
+                                                        <i class="bx bx-group me-1"></i>Team Assignment
+                                                    </span>
+                                                    <br>
+                                                    <small class="text-muted">{{ $outage->assignedTeam->team_name }}</small>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                <span class="fw-medium">{{ $outage->created_at->format('M d, Y') }}</span>
+                                                <br>
+                                                <small class="text-muted">{{ $outage->created_at->format('h:i A') }}</small>
+                                            </td>
+                                            <td>
+                                                <div class="dropdown">
+                                                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                                        <i class="bx bx-dots-vertical-rounded"></i>
+                                                    </button>
+                                                    <ul class="dropdown-menu">
+                                                        <li>
+                                                            <a class="dropdown-item" href="{{ route('outages.show', $outage->id) }}">
+                                                                <i class="bx bx-show me-2"></i> View
+                                                            </a>
+                                                        </li>
+                                                        <li>
+                                                            <a class="dropdown-item" href="{{ route('outages.my-outages.edit', $outage->id) }}">
+                                                                <i class="bx bx-edit me-2"></i> Update Progress
+                                                            </a>
+                                                        </li>
+                                                        <li>
+                                                            <a class="dropdown-item" href="{{ route('outages.activity', $outage->id) }}">
+                                                                <i class="bx bx-history me-2"></i> History
+                                                            </a>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Pagination -->
+                        <div class="card-footer">
+                            {{ $outages->appends(request()->query())->links() }}
+                        </div>
+                    @else
+                        <div class="text-center py-5">
+                            <i class="bx bx-user-x bx-lg text-muted mb-3"></i>
+                            <h5 class="text-muted">No outages assigned to you</h5>
+                            <p class="text-muted">You don't have any outages assigned to you or your team yet.</p>
+                            <a href="{{ route('outages.index') }}" class="btn btn-primary btn-xs">
+                                <i class="bx bx-list-ul me-1"></i> View All Outages
+                            </a>
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@endsection
+
+@section('page-script')
+<script>
+$(document).ready(function() {
+    // Auto-submit form on filter change
+    $('#status, #priority').change(function() {
+        $(this).closest('form').submit();
+    });
+});
+</script>
+@endsection
+
