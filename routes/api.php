@@ -40,18 +40,18 @@ Route::middleware(['mobile.cors', 'auth:sanctum'])->group(function () {
 
 // Mobile App Authentication Routes
 Route::prefix('mobile')->middleware(['mobile.cors'])->group(function () {
-    Route::post('login', [MobileAuthController::class, 'login']);
-    
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::post('login', [MobileAuthController::class, 'login']); // With CORS middleware
+
+    Route::middleware(['mobile.auth', 'api'])->group(function () {
         Route::post('logout', [MobileAuthController::class, 'logout']);
         Route::get('profile', [MobileAuthController::class, 'profile']);
         Route::post('location', [MobileAuthController::class, 'updateLocation']);
         Route::get('location/history', [MobileAuthController::class, 'locationHistory']);
-        
+
         // Debug endpoints
         Route::get('debug', [App\Http\Controllers\Api\MobileDebugController::class, 'debug']);
         Route::get('test', [App\Http\Controllers\Api\MobileDebugController::class, 'test']);
-        
+
         // Appointments
         Route::get('appointments', [MobileAppointmentController::class, 'index']);
         Route::get('appointments/{id}', [MobileAppointmentController::class, 'show']);
@@ -60,7 +60,7 @@ Route::prefix('mobile')->middleware(['mobile.cors'])->group(function () {
         Route::post('appointments/{id}/photos', [MobileAppointmentController::class, 'uploadPhoto']);
         Route::get('appointments/{id}/photos', [MobileAppointmentController::class, 'photos']);
         Route::get('appointments/performance', [MobileAppointmentController::class, 'performance']);
-        
+
         // Outages
         Route::get('outages', [MobileOutageController::class, 'index']);
         Route::get('outages/{id}', [MobileOutageController::class, 'show']);
@@ -69,7 +69,7 @@ Route::prefix('mobile')->middleware(['mobile.cors'])->group(function () {
         Route::post('outages/{id}/photos', [MobileOutageController::class, 'uploadPhoto']);
         Route::get('outages/{id}/photos', [MobileOutageController::class, 'photos']);
         Route::get('outages/performance', [MobileOutageController::class, 'performance']);
-        
+
         // Mobile Escalations API (Sales Team)
         Route::prefix('escalations')->group(function () {
             Route::get('/', [MobileEscalationController::class, 'index']);

@@ -224,15 +224,58 @@ $(document).ready(function() {
 // Confirmation functions
 function confirmActivate(id) {
     if (confirm('Are you sure you want to activate this sub department?')) {
-        window.location.href = '/settings/departments/' + id + '/sub-department/activate';
+        $.ajax({
+            url: '/settings/departments/' + id + '/sub-department/activate',
+            type: 'POST',
+            data: {
+                _token: '{{ csrf_token() }}'
+            },
+            success: function(response) {
+                if (response.success) {
+                    // Reload the sub-departments table instead of full page reload
+                    if (typeof loadSubDepartments === 'function') {
+                        loadSubDepartments();
+                    } else {
+                        // Fallback: reload just the content area
+                        location.reload();
+                    }
+                } else {
+                    alert('Error activating sub department: ' + (response.message || 'Unknown error'));
+                }
+            },
+            error: function() {
+                alert('Error activating sub department. Please try again.');
+            }
+        });
     }
 }
 
 function confirmDeactivate(id) {
     if (confirm('Are you sure you want to deactivate this sub department?')) {
-        window.location.href = '/settings/departments/' + id + '/sub-department/deactivate';
+        $.ajax({
+            url: '/settings/departments/' + id + '/sub-department/deactivate',
+            type: 'POST',
+            data: {
+                _token: '{{ csrf_token() }}'
+            },
+            success: function(response) {
+                if (response.success) {
+                    // Reload the sub-departments table instead of full page reload
+                    if (typeof loadSubDepartments === 'function') {
+                        loadSubDepartments();
+                    } else {
+                        // Fallback: reload just the content area
+                        location.reload();
+                    }
+                } else {
+                    alert('Error deactivating sub department: ' + (response.message || 'Unknown error'));
+                }
+            },
+            error: function() {
+                alert('Error deactivating sub department. Please try again.');
+            }
+        });
     }
 }
 </script>
 @endsection
-

@@ -5,10 +5,9 @@ Route::get('/test-module-route', function () {
   return 'Test module route is working!';
 });
 
-use App\Models\SubGeneralIssue;
+
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\FontSettingsController;
 use App\Http\Controllers\Admin\UserController;
@@ -18,17 +17,8 @@ use App\Http\Controllers\TeamTypeController;
 use App\Http\Controllers\PartnerController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\Admin\PermissionsController;
-use App\Http\Controllers\Examination\CourseController;
-use App\Http\Controllers\Results\TeamResultController;
-use App\Http\Controllers\Results\AgentResultController;
-use App\Http\Controllers\Examination\ExamBankController;
-use App\Http\Controllers\QualityAnalyst\CategoryController;
-use App\Http\Controllers\Examination\ScheduleExamController;
-use App\Http\Controllers\QualityAnalyst\ParametersController;
-use App\Http\Controllers\QualityAnalyst\GeneralIssueController;
-use App\Http\Controllers\SiteVisitController;
 use App\Http\Controllers\ReportDownloadController;
-use Modules\Appointment\Http\Controllers\AppointmentFinalReasonController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -57,8 +47,8 @@ Route::middleware('auth')->group(function () {
 Route::middleware(['auth', 'verified'])->group(function () {
   // Include module routes
   require module_path('Appointment', 'routes/web.php');
-  require module_path('Outages', 'Routes/web.php');
-  require module_path('Escalations', 'Routes/web.php');
+  require module_path('Outages', 'routes/web.php');
+  require module_path('Escalations', 'routes/web.php');
 });
 
 // Temporary bypass route for testing
@@ -171,10 +161,10 @@ Route::middleware('auth')->group(function () {
       Route::get('/{teamtype}/sub-teams', [TeamTypeController::class, 'getSubTeams'])
       ->name('sub-teams')
       ->where('teamtype', '[0-9]+');
-      
+
       Route::get('/sub-departments', [TeamTypeController::class, 'getSubDepartments'])
       ->name('sub-departments');
-      
+
       Route::get('/team-types-by-department', [TeamTypeController::class, 'getTeamTypesByDepartment'])
       ->name('team-types-by-department');
 
@@ -182,7 +172,7 @@ Route::middleware('auth')->group(function () {
       Route::get('/{teamtype}/edit', [TeamTypeController::class, 'edit'])->name('edit');
       Route::put('/{teamtype}', [TeamTypeController::class, 'update'])->name('update');
       Route::delete('/{teamtype}', [TeamTypeController::class, 'destroy'])->name('destroy');
-      
+
       // Toggle status route
       Route::patch('/{teamtype}/toggle-status', [TeamTypeController::class, 'toggleStatus'])->name('toggle-status');
 
@@ -195,7 +185,7 @@ Route::middleware('auth')->group(function () {
           Route::get('/{subtype}/edit', [TeamTypeController::class, 'editSubType'])->name('edit');
           Route::put('/{subtype}', [TeamTypeController::class, 'updateSubType'])->name('update');
           Route::delete('/{subtype}', [TeamTypeController::class, 'destroySubType'])->name('destroy');
-          
+
           // Toggle sub team type status route
           Route::patch('/{subtype}/toggle-status', [TeamTypeController::class, 'toggleSubTypeStatus'])->name('toggle-status');
         });
@@ -215,7 +205,7 @@ Route::middleware('auth')->group(function () {
       Route::put('/{team}', [TeamController::class, 'update'])->name('update');
       Route::delete('/{team}', [TeamController::class, 'destroy'])->name('destroy');
     });
-    
+
   // API route for teams dropdown
   Route::get('/teams', [TeamController::class, 'getAllTeams']);
 });

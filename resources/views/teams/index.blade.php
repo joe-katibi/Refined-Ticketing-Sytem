@@ -171,7 +171,17 @@ $configData = Helper::appClasses();
                             icon: 'success',
                             confirmButtonText: 'OK'
                         }).then(() => {
-                            window.location.reload();
+                            // Close modal and refresh the teams table instead of full page reload
+                            $('.modal').modal('hide');
+                            // Reload the teams data via AJAX (if you have a function for this)
+                            if (typeof loadTeams === 'function') {
+                                loadTeams();
+                            } else {
+                                // Fallback: just remove the modal from backdrop
+                                $('.modal-backdrop').remove();
+                                $('body').removeClass('modal-open');
+                                $('.modal').hide();
+                            }
                         });
                     },
                     error: function(xhr) {
@@ -199,4 +209,3 @@ $configData = Helper::appClasses();
     </script>
     @endpush
 @endsection
-

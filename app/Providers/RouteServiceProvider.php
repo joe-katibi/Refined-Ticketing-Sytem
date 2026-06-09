@@ -29,6 +29,7 @@ class RouteServiceProvider extends ServiceProvider
         });
 
         $this->routes(function () {
+            // API routes should be registered first with higher priority
             Route::middleware('api')
                 ->prefix('api')
                 ->namespace($this->namespace)

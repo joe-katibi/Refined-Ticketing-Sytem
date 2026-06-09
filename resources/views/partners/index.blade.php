@@ -136,7 +136,22 @@ document.addEventListener('DOMContentLoaded', function() {
                         icon: 'success',
                         confirmButtonText: 'OK'
                     }).then(() => {
-                        window.location.reload();
+                        // Close modal and refresh the partners table instead of full page reload
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('createPartnerModal'));
+                        if (modal) {
+                            modal.hide();
+                        }
+                        // Clear the form
+                        $('#createPartnerForm')[0].reset();
+                        // Reload the partners data via AJAX (if you have a function for this)
+                        if (typeof loadPartners === 'function') {
+                            loadPartners();
+                        } else {
+                            // Fallback: just remove the modal from backdrop
+                            $('.modal-backdrop').remove();
+                            $('body').removeClass('modal-open');
+                            $('.modal').hide();
+                        }
                     });
                 } else {
                     // Handle validation errors
@@ -241,7 +256,20 @@ document.addEventListener('DOMContentLoaded', function() {
                         icon: 'success',
                         confirmButtonText: 'OK'
                     }).then(() => {
-                        window.location.reload();
+                        // Close modal and refresh the partners table instead of full page reload
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('editPartnerModal'));
+                        if (modal) {
+                            modal.hide();
+                        }
+                        // Reload the partners data via AJAX (if you have a function for this)
+                        if (typeof loadPartners === 'function') {
+                            loadPartners();
+                        } else {
+                            // Fallback: just remove the modal from backdrop
+                            $('.modal-backdrop').remove();
+                            $('body').removeClass('modal-open');
+                            $('.modal').hide();
+                        }
                     });
                 } else {
                     // Handle validation errors
@@ -304,4 +332,3 @@ $(document).ready(function() {
 });
 </script>
 @endsection
-

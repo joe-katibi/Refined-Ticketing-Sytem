@@ -15,6 +15,14 @@ class MobileCorsMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
+        // Debug logging
+        \Log::info('MobileCorsMiddleware: Processing request', [
+            'method' => $request->getMethod(),
+            'path' => $request->path(),
+            'origin' => $request->header('Origin'),
+            'user_agent' => $request->header('User-Agent')
+        ]);
+
         // Handle preflight OPTIONS requests
         if ($request->getMethod() === "OPTIONS") {
             return response('', 200)
@@ -46,7 +54,7 @@ class MobileCorsMiddleware
     private function getAllowedOrigin(Request $request): string
     {
         $origin = $request->header('Origin');
-        
+
         $allowedOrigins = [
             'http://localhost:3000',
             'http://127.0.0.1:3000',

@@ -189,7 +189,7 @@ $(document).ready(function() {
             // Add Bootstrap classes to the search input
             $('.dataTables_filter input').addClass('form-control form-control-sm');
             $('.dataTables_filter label').addClass('mb-0');
-            
+
             // Move search to a better position
             $('.dataTables_filter').addClass('mb-3');
         }
@@ -289,7 +289,26 @@ $(document).ready(function() {
                 },
                 success: function(response) {
                     if (response.success) {
-                        location.reload();
+                        // Update the button and status without full page reload
+                        var button = $('.toggle-user-status-btn[data-user-id="' + userId + '"]');
+                        var newStatus = currentStatus == 1 ? 0 : 1;
+                        var newActionText = newStatus == 1 ? 'deactivate' : 'activate';
+
+                        // Update button data attributes
+                        button.data('current-status', newStatus);
+                        button.attr('data-current-status', newStatus);
+
+                        // Update button text and styling
+                        if (newStatus == 1) {
+                            button.removeClass('btn-success').addClass('btn-danger');
+                            button.html('<i class="fas fa-ban"></i> Deactivate');
+                        } else {
+                            button.removeClass('btn-danger').addClass('btn-success');
+                            button.html('<i class="fas fa-check"></i> Activate');
+                        }
+
+                        // Show success message
+                        alert('User ' + actionText + 'd successfully');
                     } else {
                         alert('Error ' + actionText + 'ing user: ' + response.message);
                     }

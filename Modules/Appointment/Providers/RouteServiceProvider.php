@@ -80,7 +80,7 @@ class RouteServiceProvider extends ServiceProvider
         Route::prefix('api')
             ->middleware('api')
             ->namespace($this->namespace)
-            ->group(module_path('Appointment', '/Routes/api.php'));
+            ->group(module_path('Appointment', '/routes/api.php'));
     }
 
     /**
@@ -96,11 +96,11 @@ class RouteServiceProvider extends ServiceProvider
             Route::prefix('api')
                 ->middleware('api')
                 ->namespace($this->namespace)
-                ->group(base_path('Modules/Appointment/Routes/api.php'));
+                ->group(base_path('Modules/Appointment/routes/api.php'));
 
             Route::middleware('web')
                 ->namespace($this->namespace)
-                ->group(base_path('Modules/Appointment/Routes/web.php'));
+                ->group(base_path('Modules/Appointment/routes/web.php'));
         });
     }
 

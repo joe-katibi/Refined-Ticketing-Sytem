@@ -1,7 +1,7 @@
 <!-- Debug: Modal included -->
 <script>
     console.log('Modal template included in DOM');
-    
+
     // Check if the modal element exists
     document.addEventListener('DOMContentLoaded', function() {
         const modal = document.getElementById('editTeamTypeModal');
@@ -191,7 +191,20 @@ function initializeEditModal() {
                         icon: 'success',
                         confirmButtonText: 'OK'
                     }).then(() => {
-                        window.location.reload();
+                        // Close modal and refresh the team types table instead of full page reload
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('editTeamTypeModal'));
+                        if (modal) {
+                            modal.hide();
+                        }
+                        // Reload the team types data via AJAX (if you have a function for this)
+                        if (typeof loadTeamTypes === 'function') {
+                            loadTeamTypes();
+                        } else {
+                            // Fallback: just remove the modal from backdrop
+                            $('.modal-backdrop').remove();
+                            $('body').removeClass('modal-open');
+                            $('.modal').hide();
+                        }
                     });
                 } else {
                     // Handle validation errors
@@ -234,22 +247,22 @@ if (editModalElement) {
     editModalElement.addEventListener('show.bs.modal', function(event) {
         console.log('Modal show event triggered');
         const button = event.relatedTarget; // Button that triggered the modal
-        
+
         // Extract info from data-* attributes
         const id = button.getAttribute('data-id');
         const typeName = button.getAttribute('data-type_name');
         const description = button.getAttribute('data-description');
         const status = button.getAttribute('data-status');
-        
+
         console.log('Modal data:', {id, typeName, description, status});
-        
+
         // Update the modal's content
         const modal = this;
         modal.querySelector('#edit_id').value = id;
         modal.querySelector('#edit_type_name').value = typeName || '';
         modal.querySelector('#edit_description').value = description || '';
         modal.querySelector('#edit_status').value = status || 'Active';
-        
+
         // Update the form action
         const form = modal.querySelector('#editTeamTypeForm');
         if (form) {
@@ -261,11 +274,11 @@ if (editModalElement) {
 // Also initialize the modal on page load as a fallback
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM fully loaded');
-    
+
     // Check if we have any edit buttons
     const editButtons = document.querySelectorAll('.edit-team-type');
     console.log('Found edit buttons:', editButtons.length);
-    
+
     // Add click handler to each button as a fallback
     editButtons.forEach(button => {
         button.addEventListener('click', function(event) {
@@ -274,15 +287,15 @@ document.addEventListener('DOMContentLoaded', function() {
             const typeName = this.getAttribute('data-type_name');
             const description = this.getAttribute('data-description');
             const status = this.getAttribute('data-status');
-            
+
             console.log('Button data:', {id, typeName, description, status});
-            
+
             // Set form values
             document.getElementById('edit_id').value = id;
             document.getElementById('edit_type_name').value = typeName || '';
             document.getElementById('edit_description').value = description || '';
             document.getElementById('edit_status').value = status || 'Active';
-            
+
             // Update form action
             const form = document.getElementById('editTeamTypeForm');
             if (form) {
@@ -293,4 +306,3 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 @endpush
-

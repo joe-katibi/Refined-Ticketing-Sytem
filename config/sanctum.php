@@ -17,7 +17,7 @@ return [
 
     'stateful' => explode(',', env('SANCTUM_STATEFUL_DOMAINS', sprintf(
         '%s%s',
-        'localhost,localhost:3000,localhost:8080,localhost:5000,localhost:7233,127.0.0.1,127.0.0.1:8000,127.0.0.1:3000,127.0.0.1:8080,127.0.0.1:5000,127.0.0.1:7233,::1',
+        'localhost,localhost:8080,localhost:5000,localhost:7233,127.0.0.1,127.0.0.1:8000,127.0.0.1:3000,127.0.0.1:8080,127.0.0.1:5000,127.0.0.1:7233,::1',
         Sanctum::currentApplicationUrlWithPort()
     ))),
 
@@ -33,7 +33,7 @@ return [
     |
     */
 
-    'guard' => ['web'],
+    'guard' => ['web', 'mobile'],
 
     /*
     |--------------------------------------------------------------------------
@@ -79,6 +79,6 @@ return [
         'encrypt_cookies' => App\Http\Middleware\EncryptCookies::class,
         'verify_csrf_token' => App\Http\Middleware\VerifyCsrfToken::class,
     ],
-    
+
 
 ];

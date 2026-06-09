@@ -16,7 +16,7 @@ class Kernel extends HttpKernel
   protected $middleware = [
     // \App\Http\Middleware\TrustHosts::class,
     \App\Http\Middleware\TrustProxies::class,
-    \Illuminate\Http\Middleware\HandleCors::class,
+    // \Illuminate\Http\Middleware\HandleCors::class, // Disabled to use custom MobileCorsMiddleware
     \App\Http\Middleware\PreventRequestsDuringMaintenance::class,
     \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
     \App\Http\Middleware\TrimStrings::class,
@@ -40,7 +40,7 @@ class Kernel extends HttpKernel
     ],
 
     'api' => [
-      \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
+      // \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class, // Removed for mobile API
       \Illuminate\Routing\Middleware\ThrottleRequests::class.':api',
       \Illuminate\Routing\Middleware\SubstituteBindings::class,
     ],
@@ -71,5 +71,6 @@ class Kernel extends HttpKernel
     'permissions' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
     'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
     'mobile.cors' => \App\Http\Middleware\MobileCorsMiddleware::class,
+    'mobile.auth' => \App\Http\Middleware\MobileAuth::class,
   ];
 }
