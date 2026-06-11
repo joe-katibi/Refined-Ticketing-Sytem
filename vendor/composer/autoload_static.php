@@ -138,6 +138,11 @@ class ComposerStaticInit4eafbc89f4a1fcb1ac774da572d45c83
         'M' => 
         array (
             'Monolog\\' => 8,
+            'Modules\\Escalations\\Database\\Seeders\\' => 37,
+            'Modules\\Escalations\\Database\\' => 29,
+            'Modules\\Escalations\\App\\' => 24,
+            'Modules\\Appointment\\Database\\Seeders\\' => 37,
+            'Modules\\Appointment\\Database\\' => 29,
             'Modules\\' => 8,
             'Mockery\\' => 8,
             'Matrix\\' => 7,
@@ -467,6 +472,26 @@ class ComposerStaticInit4eafbc89f4a1fcb1ac774da572d45c83
         'Monolog\\' => 
         array (
             0 => __DIR__ . '/..' . '/monolog/monolog/src/Monolog',
+        ),
+        'Modules\\Escalations\\Database\\Seeders\\' => 
+        array (
+            0 => __DIR__ . '/../..' . '/Modules/Escalations/database/seeders',
+        ),
+        'Modules\\Escalations\\Database\\' => 
+        array (
+            0 => __DIR__ . '/../..' . '/Modules/Escalations/database',
+        ),
+        'Modules\\Escalations\\App\\' => 
+        array (
+            0 => __DIR__ . '/../..' . '/Modules/Escalations/app',
+        ),
+        'Modules\\Appointment\\Database\\Seeders\\' => 
+        array (
+            0 => __DIR__ . '/../..' . '/Modules/Appointment/database/seeders',
+        ),
+        'Modules\\Appointment\\Database\\' => 
+        array (
+            0 => __DIR__ . '/../..' . '/Modules/Appointment/database',
         ),
         'Modules\\' => 
         array (
@@ -4548,6 +4573,8 @@ class ComposerStaticInit4eafbc89f4a1fcb1ac774da572d45c83
         'Mockery\\Undefined' => __DIR__ . '/..' . '/mockery/mockery/library/Mockery/Undefined.php',
         'Mockery\\VerificationDirector' => __DIR__ . '/..' . '/mockery/mockery/library/Mockery/VerificationDirector.php',
         'Mockery\\VerificationExpectation' => __DIR__ . '/..' . '/mockery/mockery/library/Mockery/VerificationExpectation.php',
+        'Modules\\Appointment\\Database\\Seeders\\AppointmentDatabaseSeeder' => __DIR__ . '/../..' . '/Modules/Appointment/database/seeders/AppointmentDatabaseSeeder.php',
+        'Modules\\Appointment\\Database\\Seeders\\AppointmentStatusSeeder' => __DIR__ . '/../..' . '/Modules/Appointment/database/seeders/AppointmentStatusSeeder.php',
         'Modules\\Appointment\\Exports\\AppointmentReportExport' => __DIR__ . '/../..' . '/Modules/Appointment/Exports/AppointmentReportExport.php',
         'Modules\\Appointment\\Http\\Controllers\\AppointmentController' => __DIR__ . '/../..' . '/Modules/Appointment/Http/Controllers/AppointmentController.php',
         'Modules\\Appointment\\Http\\Controllers\\AppointmentFinalReasonController' => __DIR__ . '/../..' . '/Modules/Appointment/Http/Controllers/AppointmentFinalReasonController.php',
@@ -4570,9 +4597,15 @@ class ComposerStaticInit4eafbc89f4a1fcb1ac774da572d45c83
         'Modules\\Appointment\\Providers\\AppointmentServiceProvider' => __DIR__ . '/../..' . '/Modules/Appointment/Providers/AppointmentServiceProvider.php',
         'Modules\\Appointment\\Providers\\RouteServiceProvider' => __DIR__ . '/../..' . '/Modules/Appointment/Providers/RouteServiceProvider.php',
         'Modules\\Appointment\\Services\\NotificationService' => __DIR__ . '/../..' . '/Modules/Appointment/Services/NotificationService.php',
+        'Modules\\Escalations\\App\\Http\\Controllers\\EscalationController' => __DIR__ . '/../..' . '/Modules/Escalations/app/Http/Controllers/EscalationController.php',
+        'Modules\\Escalations\\App\\Models\\Escalation' => __DIR__ . '/../..' . '/Modules/Escalations/app/Models/Escalation.php',
+        'Modules\\Escalations\\App\\Models\\EscalationHistory' => __DIR__ . '/../..' . '/Modules/Escalations/app/Models/EscalationHistory.php',
+        'Modules\\Escalations\\App\\Observers\\EscalationObserver' => __DIR__ . '/../..' . '/Modules/Escalations/app/Observers/EscalationObserver.php',
+        'Modules\\Escalations\\App\\Services\\EscalationHistoryService' => __DIR__ . '/../..' . '/Modules/Escalations/app/Services/EscalationHistoryService.php',
         'Modules\\Escalations\\Console\\Commands\\CheckEscalationSla' => __DIR__ . '/../..' . '/Modules/Escalations/Console/Commands/CheckEscalationSla.php',
         'Modules\\Escalations\\Console\\Commands\\CheckNotificationsCommand' => __DIR__ . '/../..' . '/Modules/Escalations/Console/Commands/CheckNotificationsCommand.php',
         'Modules\\Escalations\\Console\\Commands\\TestEscalationNotifications' => __DIR__ . '/../..' . '/Modules/Escalations/Console/Commands/TestEscalationNotifications.php',
+        'Modules\\Escalations\\Database\\Seeders\\EscalationsDatabaseSeeder' => __DIR__ . '/../..' . '/Modules/Escalations/database/seeders/EscalationsDatabaseSeeder.php',
         'Modules\\Escalations\\Entities\\Category' => __DIR__ . '/../..' . '/Modules/Escalations/Entities/Category.php',
         'Modules\\Escalations\\Entities\\Escalation' => __DIR__ . '/../..' . '/Modules/Escalations/Entities/Escalation.php',
         'Modules\\Escalations\\Entities\\EscalationList' => __DIR__ . '/../..' . '/Modules/Escalations/Entities/EscalationList.php',

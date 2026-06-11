@@ -36,7 +36,12 @@
       "App\\": "app/",
       "Database\\Factories\\": "database/factories/",
       "Database\\Seeders\\": "database/seeders/",
-      "Modules\\": "Modules/"
+      "Modules\\": "Modules/",
+      "Modules\\Escalations\\App\\": "Modules/Escalations/app/",
+      "Modules\\Escalations\\Database\\": "Modules/Escalations/database/",
+      "Modules\\Escalations\\Database\\Seeders\\": "Modules/Escalations/database/seeders/",
+      "Modules\\Appointment\\Database\\": "Modules/Appointment/database/",
+      "Modules\\Appointment\\Database\\Seeders\\": "Modules/Appointment/database/seeders/"
     },
     "exclude-from-classmap": [
       "Modules/*/Database/Migrations/*",
