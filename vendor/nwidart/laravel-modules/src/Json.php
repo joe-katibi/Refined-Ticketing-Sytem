@@ -32,9 +32,9 @@ class Json
      * The constructor.
      *
      * @param mixed                             $path
-     * @param \Illuminate\Filesystem\Filesystem $filesystem
+     * @param \Illuminate\Filesystem\Filesystem|null $filesystem
      */
-    public function __construct($path, Filesystem $filesystem = null)
+    public function __construct($path, ?Filesystem $filesystem = null)
     {
         $this->path = (string) $path;
         $this->filesystem = $filesystem ?: new Filesystem();
