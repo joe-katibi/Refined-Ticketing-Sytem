@@ -93,11 +93,11 @@ class Json
      * Make new instance.
      *
      * @param string                            $path
-     * @param \Illuminate\Filesystem\Filesystem $filesystem
+     * @param \Illuminate\Filesystem\Filesystem|null $filesystem
      *
      * @return static
      */
-    public static function make($path, Filesystem $filesystem = null)
+    public static function make($path, ?Filesystem $filesystem = null)
     {
         return new static($path, $filesystem);
     }
@@ -150,11 +150,11 @@ class Json
     /**
      * Convert the given array data to pretty json.
      *
-     * @param array $data
+     * @param array|null $data
      *
      * @return string
      */
-    public function toJsonPretty(array $data = null)
+    public function toJsonPretty(?array $data = null)
     {
         return json_encode($data ?: $this->attributes, JSON_PRETTY_PRINT);
     }

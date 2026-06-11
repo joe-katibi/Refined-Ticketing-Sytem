@@ -74,7 +74,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
       Route::get('{appointment}/histories', [AppointmentHistoryController::class, 'show'])->name('histories.show');
 
       // Single appointment routes
-      Route::prefix('{appointment}')->group(function () {
+      Route::prefix('{appointment}')->whereNumber('appointment')->group(function () {
         Route::get('/', [AppointmentController::class, 'show'])
           ->name('show')
           ->middleware('permission:view-appointment-view');

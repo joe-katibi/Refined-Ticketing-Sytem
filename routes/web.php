@@ -1,10 +1,5 @@
 <?php
 
-// Test route to verify module routes are being loaded
-Route::get('/test-module-route', function () {
-  return 'Test module route is working!';
-});
-
 
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -44,17 +39,32 @@ Route::middleware('auth')->group(function () {
 });
 
 // Load Module Routes
+if (! function_exists('require_module_route')) {
+  function require_module_route(string $module, string $relativePath)
+  {
+    if (! function_exists('module_path')) {
+      return;
+    }
+
+    try {
+      $path = module_path($module, $relativePath);
+    } catch (\Throwable $e) {
+      return;
+    }
+
+    if (file_exists($path)) {
+      require $path;
+    }
+  }
+}
+
 Route::middleware(['auth', 'verified'])->group(function () {
   // Include module routes
-  require module_path('Appointment', 'routes/web.php');
-  require module_path('Outages', 'routes/web.php');
-  require module_path('Escalations', 'routes/web.php');
+  require_module_route('Appointment', 'routes/web.php');
+  require_module_route('Outages', 'routes/web.php');
+  require_module_route('Escalations', 'routes/web.php');
 });
 
-// Temporary bypass route for testing
-Route::get('/test-appointment-bypass', function() {
-  return 'Appointment route bypass works!';
-});
 
 Route::middleware(['auth', 'check.first.login'])->group(function () {
   Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

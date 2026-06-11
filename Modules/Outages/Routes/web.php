@@ -11,7 +11,7 @@ use Modules\Outages\Http\Controllers\AffectedServiceController;
 use Modules\Outages\Http\Controllers\OltController;
 use Modules\Outages\Http\Controllers\FdtController;
 use Modules\Outages\Http\Controllers\FatController;
-use Modules\Outages\Http\Controllers\OutageNotificationController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -35,6 +35,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         'update' => 'permission:view-edit-outage',
         'destroy' => 'permission:view-delete-outage'
     ]);
+
+
+Route::prefix('outages')->group(function () {
+    Route::get('/', function () {
+        return 'Outages module route works!';
+    });
+});
+
     
     // Additional outage routes
     Route::patch('outages/{outage}/status', [OutageController::class, 'updateStatus'])->name('outages.updateStatus')->middleware('permission:view-edit-outage');

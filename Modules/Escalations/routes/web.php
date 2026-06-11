@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Modules\Escalations\App\Http\Controllers\EscalationController;
+use Modules\Escalations\app\Http\Controllers\EscalationController;
 use Modules\Escalations\Http\Controllers\EscalationsController;
 use Modules\Escalations\Http\Controllers\ListController;
 use Modules\Escalations\Http\Controllers\CategoryController;
