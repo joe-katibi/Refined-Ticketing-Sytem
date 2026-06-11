@@ -31,7 +31,7 @@ class EscalationsServiceProvider extends ServiceProvider
         $this->registerConfig();
         $this->registerViews();
         $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
-        
+
         // Register middleware
         $router = $this->app['router'];
         $router->pushMiddlewareToGroup('web', \Modules\Escalations\Http\Middleware\InjectNotificationComponents::class);
@@ -52,17 +52,17 @@ class EscalationsServiceProvider extends ServiceProvider
         $this->app->register(RouteServiceProvider::class);
         $this->app->register(NotificationServiceProvider::class);
         $this->app->register(ScheduleServiceProvider::class);
-        
+
         // Register the EscalationHistoryService
         $this->app->singleton('escalation.history', function ($app) {
             return new \Modules\Escalations\App\Services\EscalationHistoryService();
         });
-        
+
         // Register the EscalationObserver when the application is booted
         $this->app->booted(function () {
             \Modules\Escalations\App\Models\Escalation::observe(\Modules\Escalations\App\Observers\EscalationObserver::class);
         });
-        
+
         // Register commands
         $this->commands([
             \Modules\Escalations\Console\Commands\CheckEscalationSla::class,
@@ -79,10 +79,10 @@ class EscalationsServiceProvider extends ServiceProvider
     protected function registerConfig()
     {
         $this->publishes([
-            module_path($this->moduleName, 'Config/config.php') => config_path($this->moduleNameLower . '.php'),
+            module_path($this->moduleName, 'config/config.php') => config_path($this->moduleNameLower . '.php'),
         ], 'config');
         $this->mergeConfigFrom(
-            module_path($this->moduleName, 'Config/config.php'), $this->moduleNameLower
+            module_path($this->moduleName, 'config/config.php'), $this->moduleNameLower
         );
     }
 
