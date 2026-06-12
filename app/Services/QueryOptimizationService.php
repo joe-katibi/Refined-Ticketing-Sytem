@@ -13,7 +13,7 @@ class QueryOptimizationService
     public function getCachedDashboardStats(string $module, int $cacheMinutes = 30): array
     {
         $cacheKey = "dashboard_stats_{$module}";
-        
+
         return Cache::remember($cacheKey, $cacheMinutes * 60, function () use ($module) {
             return $this->generateDashboardStats($module);
         });
@@ -129,7 +129,7 @@ class QueryOptimizationService
     /**
      * Clear cached statistics
      */
-    public function clearCachedStats(string $module = null): void
+    public function clearCachedStats(?string $module = null): void
     {
         if ($module) {
             Cache::forget("dashboard_stats_{$module}");
@@ -175,16 +175,16 @@ class QueryOptimizationService
 
         foreach ($tables as $table) {
             $tableName = array_values((array) $table)[0];
-            
+
             $tableStats = DB::select("
-                SELECT 
+                SELECT
                     table_name,
                     table_rows,
                     data_length,
                     index_length,
                     (data_length + index_length) as total_size
-                FROM information_schema.tables 
-                WHERE table_schema = DATABASE() 
+                FROM information_schema.tables
+                WHERE table_schema = DATABASE()
                 AND table_name = ?
             ", [$tableName]);
 
@@ -207,11 +207,11 @@ class QueryOptimizationService
     private function formatBytes(int $bytes): string
     {
         $units = ['B', 'KB', 'MB', 'GB', 'TB'];
-        
+
         for ($i = 0; $bytes > 1024 && $i < count($units) - 1; $i++) {
             $bytes /= 1024;
         }
-        
+
         return round($bytes, 2) . ' ' . $units[$i];
     }
 }
