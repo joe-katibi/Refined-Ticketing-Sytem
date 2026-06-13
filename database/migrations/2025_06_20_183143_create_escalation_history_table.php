@@ -46,9 +46,6 @@ return new class extends Migration
             $table->timestamp('sla_deadline')->nullable();
             $table->boolean('sla_breached')->default(false);
             $table->timestamps();
-
-            // Foreign keys - add after table creation to ensure referenced tables exist
-            $table->foreign('escalation_id')->references('id')->on('escalations')->onDelete('cascade');
         });
     }
 
