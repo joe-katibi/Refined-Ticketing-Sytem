@@ -32,7 +32,7 @@ $configData = Helper::appClasses();
     <div class="alert alert-info">
         <h4>No Appointment Types Found</h4>
         <p>No appointment types have been configured yet. Please create appointment types first to view the appointment list.</p>
-        <a href="{{ route('appointment.appointment-types.create') }}" class="btn btn-primary">Create Appointment Type</a>
+        <a href="{{ route('appointment.types.create') }}" class="btn btn-primary">Create Appointment Type</a>
     </div>
     @endif
 
@@ -144,4 +144,3 @@ $configData = Helper::appClasses();
   });
 </script>
 @endsection
-
