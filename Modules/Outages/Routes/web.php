@@ -36,19 +36,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         'destroy' => 'permission:view-delete-outage'
     ]);
 
-
-Route::prefix('outages')->group(function () {
-    Route::get('/', function () {
-        return 'Outages module route works!';
-    });
-});
-
-    
     // Additional outage routes
     Route::patch('outages/{outage}/status', [OutageController::class, 'updateStatus'])->name('outages.updateStatus')->middleware('permission:view-edit-outage');
     Route::post('outages/{outage}/progress', [OutageController::class, 'storeProgress'])->name('outages.progress.store')->middleware('permission:view-edit-outage');
     Route::get('outages/{outage}/activity', [OutageController::class, 'activity'])->name('outages.activity')->middleware('permission:view-history-outage');
-    
+
     // Assigned Outages and My Outages
     Route::get('assigned-outages', [OutageController::class, 'assignedOutages'])->name('outages.assigned')->middleware('permission:view-assigned-outage-menu');
     Route::get('my-outages', [OutageController::class, 'myOutages'])->name('outages.my-outages')->middleware('permission:view-my-outage-menu');
@@ -132,7 +124,7 @@ Route::prefix('outages')->group(function () {
     // AJAX endpoints for outage creation cascading dropdowns
     Route::get('api/outages/olts/{olt}/slots', [OutageController::class, 'getOltSlots'])->name('api.outages.olt.slots');
     Route::get('api/outages/slots/{slot}/ports', [OutageController::class, 'getSlotPorts'])->name('api.outages.slot.ports');
-    
+
     // AJAX endpoints for team assignment cascading dropdowns
     Route::get('api/outages/team-types/{teamType}/sub-teams', [OutageController::class, 'getSubTeamsByType'])->name('api.outages.teamtype.subteams');
     Route::get('api/outages/sub-team-types/{subTeamType}/users', [OutageController::class, 'getUsersBySubTeamType'])->name('api.outages.subteamtype.users');
