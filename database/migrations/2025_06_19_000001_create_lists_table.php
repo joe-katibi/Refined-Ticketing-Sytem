@@ -7,6 +7,10 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
+        if (Schema::hasTable('lists')) {
+            return;
+        }
+
         Schema::create('lists', function (Blueprint $table) {
             $table->id();
             $table->string('account_number');
