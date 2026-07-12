@@ -33,8 +33,8 @@ class RouteServiceProvider extends ServiceProvider
      */
     public function map()
     {
-        $this->mapApiRoutes();
         $this->mapWebRoutes();
+        $this->mapApiRoutes();
     }
 
     /**
@@ -46,9 +46,15 @@ class RouteServiceProvider extends ServiceProvider
      */
     protected function mapWebRoutes()
     {
+        $webRoutesPath = module_path('Outages', 'routes/web.php');
+
+        if (! file_exists($webRoutesPath)) {
+            return;
+        }
+
         Route::middleware('web')
             ->namespace($this->moduleNamespace)
-            ->group(module_path('Outages', 'routes/web.php'));
+            ->group($webRoutesPath);
     }
 
     /**
@@ -60,9 +66,15 @@ class RouteServiceProvider extends ServiceProvider
      */
     protected function mapApiRoutes()
     {
+        $apiRoutesPath = module_path('Outages', 'routes/api.php');
+
+        if (! file_exists($apiRoutesPath)) {
+            return;
+        }
+
         Route::prefix('api')
             ->middleware('api')
             ->namespace($this->moduleNamespace)
-            ->group(module_path('Outages', 'routes/api.php'));
+            ->group($apiRoutesPath);
     }
 }
