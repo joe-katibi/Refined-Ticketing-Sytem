@@ -25,8 +25,8 @@ class EscalationsServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        $this->loadViewsFrom(__DIR__.'/../Resources/views', 'escalations');
-        Blade::anonymousComponentPath(__DIR__.'/../Resources/views/components', 'escalations');
+        $this->loadViewsFrom(__DIR__.'/../resources/views', 'escalations');
+        Blade::anonymousComponentPath(__DIR__.'/../resources/views/components', 'escalations');
         $this->registerTranslations();
         $this->registerConfig();
         $this->registerViews();
@@ -98,7 +98,7 @@ class EscalationsServiceProvider extends ServiceProvider
     {
         $viewPath = resource_path('views/modules/' . $this->moduleNameLower);
 
-        $sourcePath = module_path($this->moduleName, 'Resources/views');
+        $sourcePath = module_path($this->moduleName, 'resources/views');
 
         $this->publishes([
             $sourcePath => $viewPath
@@ -120,8 +120,8 @@ class EscalationsServiceProvider extends ServiceProvider
             $this->loadTranslationsFrom($langPath, $this->moduleNameLower);
             $this->loadJsonTranslationsFrom($langPath);
         } else {
-            $this->loadTranslationsFrom(module_path($this->moduleName, 'Resources/lang'), $this->moduleNameLower);
-            $this->loadJsonTranslationsFrom(module_path($this->moduleName, 'Resources/lang'));
+            $this->loadTranslationsFrom(module_path($this->moduleName, 'resources/lang'), $this->moduleNameLower);
+            $this->loadJsonTranslationsFrom(module_path($this->moduleName, 'resources/lang'));
         }
     }
 

@@ -57,23 +57,3 @@ foreach ($appointmentPerms as $perm) {
 }
 
 echo "Verification complete" . PHP_EOL;
-        echo "✗ Super Admin missing " . ($totalPermissions - $userPermissions) . " permissions\n";
-        
-        // Force sync all permissions
-        $allPermissions = Permission::all();
-        $superAdminRole->syncPermissions($allPermissions);
-        $superAdminUser->forgetCachedPermissions();
-        echo "✓ Permissions re-synced and cache cleared\n";
-    }
-    
-    echo "\n=== Login Credentials ===\n";
-    echo "Email: super-admin@savannah.com\n";
-    echo "Password: password123\n";
-    echo "First login required: " . ($superAdminUser->is_first_login ? 'Yes' : 'No') . "\n";
-    
-    echo "\n✓ Super Admin setup completed successfully!\n";
-    
-} catch (Exception $e) {
-    echo "Error: " . $e->getMessage() . "\n";
-    echo "Stack trace: " . $e->getTraceAsString() . "\n";
-}

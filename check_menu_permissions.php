@@ -55,9 +55,4 @@ foreach ($menuPermissions as $permission) {
     $status = $exists ? '✓' : '✗';
     echo "{$status} {$permission}\n";
 }
-
-    $exists = in_array($permission, $dbPermissions) ? '✅' : '❌';
-    echo "$exists $permission\n";
-}
-
 echo "\n=== AUDIT COMPLETE ===\n";
