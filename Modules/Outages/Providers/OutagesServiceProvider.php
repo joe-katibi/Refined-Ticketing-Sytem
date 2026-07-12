@@ -37,8 +37,7 @@ class OutagesServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        // Routes are handled by module auto-discovery, no need to register RouteServiceProvider
-        // $this->app->register(RouteServiceProvider::class);
+        $this->app->register(RouteServiceProvider::class);
     }
 
     /**
