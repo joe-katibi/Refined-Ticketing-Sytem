@@ -13,6 +13,10 @@ class CreateAppointmentStatusHistoriesTable extends Migration
      */
     public function up()
     {
+        if (Schema::hasTable('appointment_status_histories')) {
+            return;
+        }
+
         Schema::create('appointment_status_histories', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('appointment_id');
@@ -21,7 +25,7 @@ class CreateAppointmentStatusHistoriesTable extends Migration
             $table->text('notes')->nullable();
             $table->unsignedBigInteger('changed_by')->nullable();
             $table->timestamps();
-            
+
             $table->foreign('appointment_id')->references('id')->on('appointments')->onDelete('cascade');
             $table->foreign('changed_by')->references('id')->on('users')->onDelete('set null');
         });

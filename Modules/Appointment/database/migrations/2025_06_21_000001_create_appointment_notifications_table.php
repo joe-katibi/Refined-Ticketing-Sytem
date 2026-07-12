@@ -13,6 +13,10 @@ class CreateAppointmentNotificationsTable extends Migration
      */
     public function up()
     {
+        if (Schema::hasTable('appointment_notifications')) {
+            return;
+        }
+
         Schema::create('appointment_notifications', function (Blueprint $table) {
             $table->id();
             $table->foreignId('appointment_id')->constrained('appointments')->onDelete('cascade');

@@ -11,13 +11,14 @@ class CreateAppointmentStatusHistoriesTableLegacy extends Migration
    */
   public function up(): void
   {
-    // Check if table exists before trying to create it
-    if (!Schema::hasTable('appointment_status_histories')) {
-      Schema::create('appointment_status_histories', function (Blueprint $table) {
-        $table->id();
-        $table->timestamps();
-      });
+    if (Schema::hasTable('appointment_status_histories')) {
+      return;
     }
+
+    Schema::create('appointment_status_histories', function (Blueprint $table) {
+      $table->id();
+      $table->timestamps();
+    });
   }
 
   /**

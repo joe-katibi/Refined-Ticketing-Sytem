@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('appointment_statuses')) {
+            return;
+        }
+
         Schema::create('appointment_statuses', function (Blueprint $table) {
             $table->id();
             $table->string('name', 100)->unique();
@@ -24,7 +28,7 @@ return new class extends Migration
             $table->unsignedBigInteger('created_by')->nullable();
             $table->unsignedBigInteger('edited_by')->nullable();
             $table->timestamps();
-            
+
             // Foreign keys
             $table->foreign('created_by')->references('id')->on('users')->onDelete('set null');
             $table->foreign('edited_by')->references('id')->on('users')->onDelete('set null');
