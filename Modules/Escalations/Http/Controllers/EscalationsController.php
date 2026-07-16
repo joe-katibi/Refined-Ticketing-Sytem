@@ -12,7 +12,7 @@ use Modules\Appointment\Models\Appointment;
 use Modules\Appointment\Models\AppointmentType;
 use Modules\Appointment\Models\AppointmentHistory;
 use Modules\Escalations\Entities\Category;
-use Modules\Escalations\Entities\SubCategory;
+use Modules\Escalations\Entities\Subcategory;
 use Modules\Escalations\Services\NotificationService;
 
 class EscalationsController extends OptimizedController
@@ -174,7 +174,7 @@ class EscalationsController extends OptimizedController
   {
     $categories = \Modules\Escalations\Entities\Category::all();
     $subcategories = $escalation->category_id
-      ? \Modules\Escalations\Entities\SubCategory::where('category_id', $escalation->category_id)->get()
+      ? \Modules\Escalations\Entities\Subcategory::where('category_id', $escalation->category_id)->get()
       : collect();
 
     $subDepartments = \App\Models\SubDepartment::all();
@@ -681,7 +681,7 @@ class EscalationsController extends OptimizedController
    */
   public function getSubcategories($categoryId)
   {
-    $subcategories = \Modules\Escalations\Entities\SubCategory::where('category_id', $categoryId)
+    $subcategories = \Modules\Escalations\Entities\Subcategory::where('category_id', $categoryId)
       ->orderBy('sub_category_name')
       ->get(['id', 'sub_category_name']);
 
