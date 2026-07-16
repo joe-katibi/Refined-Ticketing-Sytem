@@ -41,27 +41,27 @@ class EscalationsController extends OptimizedController
     // Get all escalation lists with their relationships
     $escalationLists = \Modules\Escalations\Entities\EscalationList::with([
         'category',
-        'subcategory', 
+        'subcategory',
         'sub_department'
     ])
     ->orderBy('id', 'desc')
     ->get();
-    
+
     // Get all sub departments that have escalations
     $subDepartments = \App\Models\SubDepartment::whereIn('id', $escalationLists->pluck('sub_department_id')->unique())
         ->get();
-    
+
     // If no sub departments found, get all active sub departments
     if ($subDepartments->isEmpty()) {
         $subDepartments = \App\Models\SubDepartment::where('sub_department_status', 1)->get();
     }
-    
+
     // Group escalation lists by sub_department_id
     $listsBySubDepartment = [];
     foreach ($subDepartments as $subDepartment) {
       $listsBySubDepartment[$subDepartment->id] = $escalationLists->where('sub_department_id', $subDepartment->id);
     }
-    
+
     return view('escalations::escalation.index', compact('subDepartments', 'listsBySubDepartment', 'escalationLists'));
   }
 
@@ -120,7 +120,7 @@ class EscalationsController extends OptimizedController
       $validated['created_by'] = auth()->id();
 
       $escalation = Escalation::create($validated);
-      
+
       // Create notification for the new escalation
       $this->notificationService->notifyCreation($escalation);
 
@@ -236,7 +236,7 @@ class EscalationsController extends OptimizedController
     // Get OLTs and Slots from Outages module
     $olts = \Modules\Outages\Models\Olt::active()->orderBy('name')->get();
     $slots = collect(); // Will be populated via AJAX based on selected OLT
-  
+
     // If escalation has an OLT selected, get its slots
     if ($escalation->olt_id) {
       $selectedOlt = \Modules\Outages\Models\Olt::find($escalation->olt_id);
@@ -297,7 +297,7 @@ class EscalationsController extends OptimizedController
           'edited_by' => auth()->id(),
         ]);
       }
-      
+
       // Create database notification for the editor
       $this->notificationService->createNotification(
           auth()->id(),
@@ -305,7 +305,7 @@ class EscalationsController extends OptimizedController
           'You just edited ticket ' . $escalationList->ticket_id,
           'info'
       );
-      
+
       // Create database notification for the creator if different from editor
       if ($escalationList->created_by && $escalationList->created_by != auth()->id()) {
           $this->notificationService->createNotification(
@@ -315,7 +315,7 @@ class EscalationsController extends OptimizedController
               'info'
           );
       }
-      
+
       // Create database notification for the assigned user if different from editor and creator
       if ($escalationList->assigned_to && $escalationList->assigned_to != auth()->id() && $escalationList->assigned_to != $escalationList->created_by) {
           $this->notificationService->createNotification(
@@ -325,7 +325,7 @@ class EscalationsController extends OptimizedController
               'info'
           );
       }
-      
+
       // Set toast notification
       session()->flash('success', auth()->user()->name . ' just edited ticket ' . $escalationList->ticket_id);
 
@@ -383,7 +383,7 @@ class EscalationsController extends OptimizedController
         'status' => $request->status,
         'edited_by' => auth()->id(),
       ]);
-      
+
       // Create database notification for the editor
       $this->notificationService->createNotification(
           auth()->id(),
@@ -391,7 +391,7 @@ class EscalationsController extends OptimizedController
           'You just edited ticket ' . $escalationList->ticket_id,
           'info'
       );
-      
+
       // Create database notification for the creator if different from editor
       if ($escalationList->created_by && $escalationList->created_by != auth()->id()) {
           $this->notificationService->createNotification(
@@ -401,7 +401,7 @@ class EscalationsController extends OptimizedController
               'info'
           );
       }
-      
+
       // Create database notification for the assigned user if different from editor and creator
       if ($escalationList->assigned_to && $escalationList->assigned_to != auth()->id() && $escalationList->assigned_to != $escalationList->created_by) {
           $this->notificationService->createNotification(
@@ -411,7 +411,7 @@ class EscalationsController extends OptimizedController
               'info'
           );
       }
-      
+
       // Set toast notification
       session()->flash('success', auth()->user()->name . ' just edited ticket ' . $escalationList->ticket_id);
 
@@ -435,87 +435,87 @@ class EscalationsController extends OptimizedController
       if ($request->has('appointment_type_id')) {
         $historyData['appointment_type_id'] = $request->appointment_type_id;
       }
-      
+
       if ($request->has('appointment_id')) {
         $historyData['appointment_id'] = $request->appointment_id;
       }
-      
+
       if ($request->has('olt_id')) {
         $historyData['olt_id'] = $request->olt_id;
       }
-      
+
       if ($request->has('slot_id')) {
         $historyData['slot_id'] = $request->slot_id;
       }
-      
+
       // Support appointment fields
       if ($request->has('support_date')) {
         $historyData['support_date'] = $request->support_date;
       }
-      
+
       if ($request->has('support_time')) {
         $historyData['support_time'] = $request->support_time;
       }
-      
+
       if ($request->has('support_address')) {
         $historyData['support_address'] = $request->support_address;
       }
-      
+
       if ($request->has('support_notes')) {
         $historyData['support_notes'] = $request->support_notes;
       }
-      
+
       // Shifting appointment fields
       if ($request->has('shifting_date')) {
         $historyData['shifting_date'] = $request->shifting_date;
       }
-      
+
       if ($request->has('shifting_time')) {
         $historyData['shifting_time'] = $request->shifting_time;
       }
-      
+
       if ($request->has('shifting_address')) {
         $historyData['shifting_address'] = $request->shifting_address;
       }
-      
+
       if ($request->has('shifting_notes')) {
         $historyData['shifting_notes'] = $request->shifting_notes;
       }
-      
+
       // Installation appointment fields
       if ($request->has('installation_date')) {
         $historyData['installation_date'] = $request->installation_date;
       }
-      
+
       if ($request->has('installation_time')) {
         $historyData['installation_time'] = $request->installation_time;
       }
-      
+
       if ($request->has('installation_address')) {
         $historyData['installation_address'] = $request->installation_address;
       }
-      
+
       if ($request->has('installation_notes')) {
         $historyData['installation_notes'] = $request->installation_notes;
       }
-      
+
       // WiFi Extender appointment fields
       if ($request->has('wifi_extender_date')) {
         $historyData['wifi_extender_date'] = $request->wifi_extender_date;
       }
-      
+
       if ($request->has('wifi_extender_time')) {
         $historyData['wifi_extender_time'] = $request->wifi_extender_time;
       }
-      
+
       if ($request->has('wifi_extender_address')) {
         $historyData['wifi_extender_address'] = $request->wifi_extender_address;
       }
-      
+
       if ($request->has('wifi_extender_notes')) {
         $historyData['wifi_extender_notes'] = $request->wifi_extender_notes;
       }
-      
+
       EscalationHistory::create($historyData);
 
     // Generate a unique appointment ticket ID with retry mechanism
@@ -570,7 +570,7 @@ class EscalationsController extends OptimizedController
         } catch (\Exception $e) {
             DB::rollBack();
             $appointmentTicketId = null; // Reset to try again
-            
+
             \Log::error('Failed to generate ticket ID', [
                 'error' => $e->getMessage(),
                 'attempt' => $attempts + 1,
@@ -607,7 +607,7 @@ class EscalationsController extends OptimizedController
           'slot_id' => $request->slot_id,
           'created_by' => auth()->id(),
       ];
-      
+
       // Determine which appointment type is being used and set the appropriate fields
       if ($request->has('support_date') && $request->support_date) {
           $appointmentData['scheduled_date'] = $request->support_date;
@@ -630,7 +630,7 @@ class EscalationsController extends OptimizedController
           $appointmentData['appointment_location'] = $request->wifi_extender_address;
           $appointmentData['escalation_notes'] = $request->wifi_extender_notes;
       }
-      
+
       $escalatedAppointment = Appointment::create($appointmentData);
 
     AppointmentHistory::create([
@@ -698,7 +698,7 @@ class EscalationsController extends OptimizedController
   {
     try {
       $olt = \Modules\Outages\Models\Olt::find($oltId);
-      
+
       if (!$olt) {
         return response()->json([
           'success' => false,

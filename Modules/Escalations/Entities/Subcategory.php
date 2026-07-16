@@ -3,7 +3,7 @@ namespace Modules\Escalations\Entities;
 
 use Illuminate\Database\Eloquent\Model;
 
-class Subcategory extends Model
+class SubCategory extends Model
 {
     protected $fillable = [
         'sub_category_name', 'category_id', 'status', 'created_by', 'edited_by'
