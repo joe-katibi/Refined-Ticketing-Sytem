@@ -43,7 +43,11 @@ return [
          'api' => [
              'driver' => 'sanctum', // or 'passport' or 'token'
            'provider' => 'users',
-    ],
+        ],
+        'mobile' => [
+           'driver' => 'sanctum',
+          'provider' => 'users',
+        ],
     ],
 
     /*
