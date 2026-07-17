@@ -17,7 +17,7 @@ use Modules\Outages\Http\Controllers\OutageTicketController;
 
 Route::middleware('auth:api')->group(function () {
     // Outage API Endpoints
-    Route::apiResource('outages', OutageController::class);
+    Route::apiResource('outages-api', OutageController::class);
 
     // Outage Ticket API Endpoints
     Route::apiResource('outage-tickets', OutageTicketController::class);
