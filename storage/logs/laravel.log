@@ -95580,3 +95580,7 @@ Did you mean one of these?
 [2026-07-16 12:00:55] local.INFO: Subtype Option: {"type_id":3,"subtype_id":4,"name":"Shifting","is_selected":false} 
 [2026-07-16 12:00:55] local.INFO: Subtype Option: {"type_id":4,"subtype_id":1,"name":"Wi-Fi extender installation","is_selected":false} 
 [2026-07-16 12:00:55] local.INFO: Subtype Option: {"type_id":4,"subtype_id":2,"name":"Wi-Fi extender Support","is_selected":false} 
+[2026-07-17 10:56:46] local.ERROR: Declaration of App\Http\Middleware\MobileAuth::handle(Illuminate\Http\Request $request, Closure $next): Symfony\Component\HttpFoundation\Response must be compatible with Illuminate\Auth\Middleware\Authenticate::handle($request, Closure $next, ...$guards) {"exception":"[object] (Symfony\\Component\\ErrorHandler\\Error\\FatalError(code: 0): Declaration of App\\Http\\Middleware\\MobileAuth::handle(Illuminate\\Http\\Request $request, Closure $next): Symfony\\Component\\HttpFoundation\\Response must be compatible with Illuminate\\Auth\\Middleware\\Authenticate::handle($request, Closure $next, ...$guards) at D:\\savannah\\Ticketing\\app\\Http\\Middleware\\MobileAuth.php:17)
+[stacktrace]
+#0 {main}
+"} 

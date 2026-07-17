@@ -38,16 +38,16 @@ class OutageDashboardController extends OutagesController
         $slaBreachedOutages = Outage::where('sla_breached', true)
             ->whereBetween('created_at', [$startDate, $endDate])
             ->count();
-        $slaComplianceRate = $totalOutages > 0 ? 
+        $slaComplianceRate = $totalOutages > 0 ?
             round((($totalOutages - $slaBreachedOutages) / $totalOutages) * 100, 2) : 100;
 
         // Customer Impact metrics
         $totalCustomersAffected = Outage::whereBetween('created_at', [$startDate, $endDate])
             ->whereNotNull('total_customers_affected')
             ->sum('total_customers_affected');
-        $avgCustomersPerOutage = $totalOutages > 0 ? 
+        $avgCustomersPerOutage = $totalOutages > 0 ?
             round($totalCustomersAffected / $totalOutages, 0) : 0;
-        
+
         // Ticket Type metrics (replacing old OutageTicket metrics)
         $regularOutages = Outage::where('ticket_type', 'regular')
             ->whereBetween('created_at', [$startDate, $endDate])
@@ -110,7 +110,7 @@ class OutageDashboardController extends OutagesController
             $dayResolved = Outage::where('status', 'Resolved')
                 ->whereDate('end_time', $date->format('Y-m-d'))
                 ->count();
-            
+
             $trendData[] = [
                 'date' => $date->format('M d'),
                 'outages' => $dayOutages,
@@ -142,7 +142,7 @@ class OutageDashboardController extends OutagesController
         $teamPerformance = \App\Models\TeamType::select('team_types.type_name as name')
             ->selectRaw('COUNT(outages.id) as total_outages')
             ->selectRaw('COUNT(CASE WHEN outages.status = "Resolved" THEN 1 END) as resolved_outages')
-            ->selectRaw('AVG(CASE WHEN outages.status = "Resolved" AND outages.end_time IS NOT NULL 
+            ->selectRaw('AVG(CASE WHEN outages.status = "Resolved" AND outages.end_time IS NOT NULL
                 THEN TIMESTAMPDIFF(MINUTE, outages.start_time, outages.end_time) END) as avg_resolution_time')
             ->leftJoin('outages', 'team_types.id', '=', 'outages.assigned_team_id')
             ->leftJoin('departments', 'team_types.department_id', '=', 'departments.id')
