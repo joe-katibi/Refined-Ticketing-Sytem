@@ -103,7 +103,14 @@ class Olt extends Model
      */
     public function getAvailableSlotsAttribute(): int
     {
-        return $this->total_slots - $this->slots()->count();
+        // total_slots is nullable (e.g. OLTs created via bulk upload never
+        // set it, since the spreadsheet has no such column) — without this
+        // guard a null total_slots renders as a confusing negative number.
+        if ($this->total_slots === null) {
+            return 0;
+        }
+
+        return max(0, $this->total_slots - $this->slots()->count());
     }
 
     /**

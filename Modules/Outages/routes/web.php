@@ -11,6 +11,8 @@ use Modules\Outages\Http\Controllers\AffectedServiceController;
 use Modules\Outages\Http\Controllers\OltController;
 use Modules\Outages\Http\Controllers\FdtController;
 use Modules\Outages\Http\Controllers\FatController;
+use Modules\Outages\Http\Controllers\CustomerController;
+use Modules\Outages\Http\Controllers\OltUploadController;
 
 
 /*
@@ -125,6 +127,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // AJAX endpoints for FDT and FAT management
     Route::get('api/ports/{ponPort}/fdts', [FdtController::class, 'getFdts'])->name('api.ports.fdts');
     Route::get('api/fdts/{fdt}/fats', [FatController::class, 'getFats'])->name('api.fdts.fats');
+
+    // Customer Management Routes
+    Route::resource('customers', CustomerController::class)->middleware('permission:view-olt-management-menu');
+    Route::get('fats/{fat}/customers/create', [CustomerController::class, 'create'])->name('fats.customers.create')->middleware('permission:view-olt-management-menu');
+    Route::post('fats/{fat}/customers', [CustomerController::class, 'store'])->name('fats.customers.store')->middleware('permission:view-olt-management-menu');
+
+    // OLT / FDT / FAT / Customer bulk Excel upload
+    Route::get('olt-upload', [OltUploadController::class, 'create'])->name('olt-upload.create')->middleware('permission:view-olt-management-create');
+    Route::post('olt-upload', [OltUploadController::class, 'store'])->name('olt-upload.store')->middleware('permission:view-olt-management-create');
+    Route::get('olt-upload/template', [OltUploadController::class, 'template'])->name('olt-upload.template')->middleware('permission:view-olt-management-create');
 
     // AJAX endpoints for outage creation cascading dropdowns
     Route::get('api/outages/olts/{olt}/slots', [OutageController::class, 'getOltSlots'])->name('api.outages.olt.slots');

@@ -90,9 +90,9 @@ class OltController extends Controller
     public function show(Olt $olt): View
     {
         $olt->load([
-            'creator', 
-            'editor', 
-            'slots.ponPorts', 
+            'creator',
+            'editor',
+            'slots.ponPorts.fdts',
             'slots.creator',
             'slots.editor'
         ]);

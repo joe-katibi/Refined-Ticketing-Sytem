@@ -278,6 +278,30 @@
           "permission": "view-olt-management-menu"
         },
         {
+          "name": "FDT Management",
+          "url": "/fdts",
+          "slug": "fdts.index",
+          "permission": "view-olt-management-menu"
+        },
+        {
+          "name": "FAT Management",
+          "url": "/fats",
+          "slug": "fats.index",
+          "permission": "view-olt-management-menu"
+        },
+        {
+          "name": "Customers",
+          "url": "/customers",
+          "slug": "customers.index",
+          "permission": "view-olt-management-menu"
+        },
+        {
+          "name": "Bulk Upload",
+          "url": "/olt-upload",
+          "slug": "olt-upload.create",
+          "permission": "view-olt-management-create"
+        },
+        {
           "name": "Affected Areas",
           "url": "/affected-areas",
           "slug": "outages.affected-areas.index",

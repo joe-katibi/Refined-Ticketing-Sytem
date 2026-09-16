@@ -221,7 +221,7 @@ $configData = Helper::appClasses();
                                             @if($slot->ponPorts->count() > 0)
                                                 <div class="row g-2">
                                                     @foreach($slot->ponPorts->sortBy('pon_port_number') as $port)
-                                                        <div class="col-md-4">
+                                                        <div class="col-md-6">
                                                             <div class="card card-body p-2">
                                                                 <div class="d-flex justify-content-between align-items-center">
                                                                     <div>
@@ -237,6 +237,23 @@ $configData = Helper::appClasses();
                                                                         </a>
                                                                     </div>
                                                                 </div>
+                                                                <div class="d-flex justify-content-between align-items-center mt-2 pt-2 border-top">
+                                                                    <small class="text-muted">
+                                                                        <i class="bx bx-git-branch"></i> {{ $port->fdts->count() }} FDT(s)
+                                                                    </small>
+                                                                    <a href="{{ route('ports.fdts.create', $port) }}" class="btn btn-outline-primary btn-xs">
+                                                                        <i class="bx bx-plus"></i> FDT
+                                                                    </a>
+                                                                </div>
+                                                                @if($port->fdts->count() > 0)
+                                                                    <div class="d-flex flex-wrap gap-1 mt-2">
+                                                                        @foreach($port->fdts->sortBy('fdt_number') as $fdt)
+                                                                            <a href="{{ route('fdts.show', $fdt) }}" class="badge {{ $fdt->status_badge_class }} text-decoration-none">
+                                                                                FDT-{{ $fdt->fdt_number }}
+                                                                            </a>
+                                                                        @endforeach
+                                                                    </div>
+                                                                @endif
                                                             </div>
                                                         </div>
                                                     @endforeach

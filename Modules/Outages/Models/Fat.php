@@ -5,6 +5,7 @@ namespace Modules\Outages\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Models\User;
 
 class Fat extends Model
@@ -36,27 +37,32 @@ class Fat extends Model
     }
 
     /**
-     * Get the PON port through the FDT.
+     * Get the PON port through the FDT. There is no pon_port_id/olt_slot_id/
+     * olt_id column on fats (only fdt_id, per $fillable) — these used to be
+     * belongsTo() relations against columns that don't exist, always
+     * returning null. Walk the real chain through fdt->ponPort instead.
      */
-    public function ponPort(): BelongsTo
+    public function getPonPortAttribute(): ?PonPort
     {
-        return $this->belongsTo(PonPort::class, 'pon_port_id');
+        return $this->fdt?->ponPort;
+    }
+
+    public function getOltSlotAttribute(): ?OltSlot
+    {
+        return $this->fdt?->ponPort?->oltSlot;
+    }
+
+    public function getOltAttribute(): ?Olt
+    {
+        return $this->fdt?->ponPort?->oltSlot?->olt;
     }
 
     /**
-     * Get the OLT slot through the FDT and PON port.
+     * Get the customers whose ONU connects at this FAT.
      */
-    public function oltSlot(): BelongsTo
+    public function customers(): HasMany
     {
-        return $this->belongsTo(OltSlot::class, 'olt_slot_id');
-    }
-
-    /**
-     * Get the OLT through the FDT, PON port, and slot.
-     */
-    public function olt(): BelongsTo
-    {
-        return $this->belongsTo(Olt::class, 'olt_id');
+        return $this->hasMany(Customer::class);
     }
 
     /**

@@ -35,11 +35,13 @@ class PonPort extends Model
     }
 
     /**
-     * Get the OLT through the slot.
+     * Get the OLT through the slot. There is no olt_id column on pon_ports
+     * (only olt_slot_id, per $fillable) — this used to be a
+     * belongsTo(Olt::class, 'olt_id') that always returned null.
      */
-    public function olt(): BelongsTo
+    public function getOltAttribute(): ?Olt
     {
-        return $this->belongsTo(Olt::class, 'olt_id');
+        return $this->oltSlot?->olt;
     }
 
     /**

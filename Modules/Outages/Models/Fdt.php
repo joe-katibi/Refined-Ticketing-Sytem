@@ -37,19 +37,23 @@ class Fdt extends Model
     }
 
     /**
-     * Get the OLT slot through the PON port.
+     * Get the OLT slot through the PON port. There is no olt_slot_id column
+     * on fdts (only pon_port_id, per $fillable) — this used to be a
+     * belongsTo(OltSlot::class, 'olt_slot_id') that always returned null,
+     * since that column doesn't exist. Walk the real chain instead.
      */
-    public function oltSlot(): BelongsTo
+    public function getOltSlotAttribute(): ?OltSlot
     {
-        return $this->belongsTo(OltSlot::class, 'olt_slot_id');
+        return $this->ponPort?->oltSlot;
     }
 
     /**
-     * Get the OLT through the PON port and slot.
+     * Get the OLT through the PON port and slot. Same fix as oltSlot above —
+     * there is no olt_id column on fdts.
      */
-    public function olt(): BelongsTo
+    public function getOltAttribute(): ?Olt
     {
-        return $this->belongsTo(Olt::class, 'olt_id');
+        return $this->ponPort?->oltSlot?->olt;
     }
 
     /**

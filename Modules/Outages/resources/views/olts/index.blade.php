@@ -16,11 +16,19 @@ $configData = Helper::appClasses();
                     <h1 class="h3 mb-0">OLT Management</h1>
                     <p class="text-muted mb-0">Manage OLT devices, slots, and PON ports</p>
                 </div>
-                @can('view-olt-management-create')
-                <a href="{{ route('olts.create') }}" class="btn btn-primary btn-xs">
-                    <i class="bx bx-plus me-1"></i>Add New OLT
-                </a>
-                @endcan
+                <div class="d-flex gap-2">
+                    <a href="{{ route('customers.index') }}" class="btn btn-outline-secondary btn-xs">
+                        <i class="bx bx-user me-1"></i>Customers
+                    </a>
+                    @can('view-olt-management-create')
+                    <a href="{{ route('olt-upload.create') }}" class="btn btn-outline-primary btn-xs">
+                        <i class="bx bx-upload me-1"></i>Bulk Upload
+                    </a>
+                    <a href="{{ route('olts.create') }}" class="btn btn-primary btn-xs">
+                        <i class="bx bx-plus me-1"></i>Add New OLT
+                    </a>
+                    @endcan
+                </div>
             </div>
         </div>
     </div>
