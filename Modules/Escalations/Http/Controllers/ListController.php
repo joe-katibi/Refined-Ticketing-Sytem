@@ -50,11 +50,13 @@ class ListController extends Controller
     $subcategories = Subcategory::all();
     $departments = \App\Models\Department::where('department_status', 1)->get();
     $subDepartments = SubDepartment::where('sub_department_status', 1)->get();
+    $regions = \App\Models\Region::active()->orderBy('name')->get();
     return view('escalations::list.create', [
       'categories' => $categories,
       'subcategories' => $subcategories,
       'departments' => $departments,
       'subDepartments' => $subDepartments,
+      'regions' => $regions,
     ]);
   }
 
@@ -70,54 +72,74 @@ class ListController extends Controller
       'status' => 'required',
     ]);
 
-    $last = EscalationList::orderByDesc('id')->first();
-    $ticket_id = 'ESC-' . (($last ? $last->id : 0) + 1);
+    // Previously: `EscalationList::orderByDesc('id')->first()` then +1, with no
+    // lock or transaction — the same unsafe-numbering pattern the spec warns
+    // against for appointments, here a third time. Two concurrent submissions
+    // could compute the same ESC-N. Also previously unwrapped: a failure after
+    // creating $list but before $escalation/$history would leave a ticket with
+    // no escalation record — this is now one atomic transaction.
+    [$list, $escalation, $queueEntry] = \Illuminate\Support\Facades\DB::transaction(function () use ($request) {
+      $ticketNumber = \App\Services\SequenceNumberService::next('escalation:ESC');
+      $ticket_id = 'ESC-' . $ticketNumber;
 
-    // Create the ticket
-    $list = EscalationList::create([
-      'account_number' => $request->account_number,
-      'ticket_id' => $ticket_id,
-      'department_id' => $request->department_id,
-      'sub_department_id' => $request->sub_department_id,
-      'category_id' => $request->category_id,
-      'sub_category_id' => $request->sub_category_id,
-      'description' => $request->description,
-      'priority' => $request->priority,
-      'status' => $request->status,
-      'created_by' => Auth::id(),
-    ]);
+      $list = EscalationList::create([
+        'account_number' => $request->account_number,
+        'ticket_id' => $ticket_id,
+        'department_id' => $request->department_id,
+        'sub_department_id' => $request->sub_department_id,
+        'category_id' => $request->category_id,
+        'sub_category_id' => $request->sub_category_id,
+        'description' => $request->description,
+        'priority' => $request->priority,
+        'status' => $request->status,
+        'created_by' => Auth::id(),
+      ]);
 
-    // Create the escalation record first
-    $escalation = \Modules\Escalations\App\Models\Escalation::create([
-      'escalation_id' => $list->id, // Link to the EscalationList
-      'ticket_id' => $ticket_id,
-      'account_number' => $request->account_number,
-      'department_id' => $request->department_id,
-      'category_id' => $request->category_id,
-      'sub_category_id' => $request->sub_category_id,
-      'description' => $request->description,
-      'status' => 'Escalated-Open',
-      'priority' => $request->priority,
-      'sub_department_id' => $request->sub_department_id,
-      'assigned_to' => null,
-      'created_by' => Auth::id(),
-    ]);
+      $escalation = \Modules\Escalations\App\Models\Escalation::create([
+        'escalation_id' => $list->id, // Link to the EscalationList
+        'ticket_id' => $ticket_id,
+        'account_number' => $request->account_number,
+        'department_id' => $request->department_id,
+        'category_id' => $request->category_id,
+        'sub_category_id' => $request->sub_category_id,
+        'description' => $request->description,
+        'status' => 'Escalated-Open',
+        'priority' => $request->priority,
+        'sub_department_id' => $request->sub_department_id,
+        'region_id' => $request->region_id,
+        'assigned_to' => null,
+        'created_by' => Auth::id(),
+      ]);
 
-    // Then create the history record
-    $history = \Modules\Escalations\App\Models\EscalationHistory::create([
-      'escalation_id' => $escalation->id, // Link to the Escalation
-      'ticket_id' => $ticket_id, // Store the ticket reference
-      'status' => 'Escalated-Open',
-      'department_id' => $request->department_id,
-      'category_id' => $request->category_id,
-      'sub_category_id' => $request->sub_category_id,
-      'description' => $request->description,
-      'account_number' => $request->account_number,
-      'priority' => $request->priority,
-      'sub_department_id' => $request->sub_department_id,
-      'action_by' => Auth::id(),
-    ]);
-    
+      \Modules\Escalations\App\Models\EscalationHistory::create([
+        'escalation_id' => $escalation->id, // Link to the Escalation
+        'ticket_id' => $ticket_id, // Store the ticket reference
+        'status' => 'Escalated-Open',
+        'department_id' => $request->department_id,
+        'category_id' => $request->category_id,
+        'sub_category_id' => $request->sub_category_id,
+        'description' => $request->description,
+        'account_number' => $request->account_number,
+        'priority' => $request->priority,
+        'sub_department_id' => $request->sub_department_id,
+        'action_by' => Auth::id(),
+      ]);
+
+      // FIFO: every new escalation enters the queue unassigned. A dispatcher
+      // (or a scheduled `fifo:dispatch` run) hands it out via
+      // FifoQueueService::assignNext()/bulkAssignToUser() — oldest-eligible
+      // first within its priority band, region-aware.
+      $queueEntry = (new \App\Services\Fifo\FifoQueueService())->enqueue(
+        'escalation',
+        'escalation',
+        $escalation->id,
+        $request->priority,
+        $request->region_id
+      );
+
+      return [$list, $escalation, $queueEntry];
+    });
+
     // Create notification for the new escalation
     // This will generate both the database notification and the toast notification
     $this->notificationService->notifyCreation($escalation);

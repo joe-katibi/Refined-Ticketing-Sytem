@@ -34,10 +34,12 @@ class AppointmentTypeController extends Controller
     {
         $validated = $request->validate([
             'type_name' => 'required|string|max:255|unique:appointment_types,type_name',
+            'code_prefix' => 'required|string|max:10|alpha_num|unique:appointment_types,code_prefix',
             'type_description' => 'nullable|string',
             'type_status' => 'required|in:Active,Inactive',
         ]);
 
+        $validated['code_prefix'] = strtoupper($validated['code_prefix']);
         $validated['created_by'] = auth()->id();
         $validated['edited_by'] = auth()->id();
 
@@ -74,10 +76,12 @@ class AppointmentTypeController extends Controller
 
         $validated = $request->validate([
             'type_name' => 'required|string|max:255|unique:appointment_types,type_name,' . $id,
+            'code_prefix' => 'required|string|max:10|alpha_num|unique:appointment_types,code_prefix,' . $id,
             'type_description' => 'nullable|string',
             'type_status' => 'required|in:Active,Inactive',
         ]);
 
+        $validated['code_prefix'] = strtoupper($validated['code_prefix']);
         $validated['edited_by'] = auth()->id();
 
         $appointmentType->update($validated);

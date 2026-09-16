@@ -98,10 +98,10 @@ $configData = Helper::appClasses();
                                                 <small class="text-muted">Team Assignment:</small>
                                                 <br>
                                                 @if($appointment->subTeamType)
-                                                    <span class="badge badge-xs bg-primary">Sub Team: {{ $appointment->subTeamType->sub_team_name }}</span>
+                                                    <span class="badge badge-xs bg-primary">Sub Team: {{ $appointment->subTeamType->sub_type_name }}</span>
                                                 @endif
                                                 @if($appointment->assignedTeam)
-                                                    <span class="badge badge-xs bg-success">Assigned: {{ $appointment->assignedTeam->assigned_team_name }}</span>
+                                                    <span class="badge badge-xs bg-success">Assigned: {{ $appointment->assignedTeam->team_name }}</span>
                                                 @endif
                                             </div>
 

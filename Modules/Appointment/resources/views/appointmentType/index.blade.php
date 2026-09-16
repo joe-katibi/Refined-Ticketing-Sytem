@@ -51,6 +51,7 @@ $configData = Helper::appClasses();
                                 <tr>
                                     <th>#</th>
                                     <th>Name</th>
+                                    <th>Prefix</th>
                                     <th>Description</th>
                                     <th>Status</th>
                                     <th>Sub-Types</th>
@@ -63,6 +64,7 @@ $configData = Helper::appClasses();
                                     <tr>
                                         <td>{{ $loop->iteration }}</td>
                                         <td>{{ $type->type_name }}</td>
+                                        <td><span class="badge badge-xs bg-secondary">{{ $type->code_prefix }}</span></td>
                                         <td>{{ $type->type_description ?: 'N/A' }}</td>
                                         <td>{!! $type->status_badge !!}</td>
                                         <td>

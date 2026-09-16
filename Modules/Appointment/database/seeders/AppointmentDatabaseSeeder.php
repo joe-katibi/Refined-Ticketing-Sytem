@@ -14,6 +14,7 @@ class AppointmentDatabaseSeeder extends Seeder
     {
         $this->call([
             AppointmentStatusSeeder::class,
+            AppointmentTypeSeeder::class,
         ]);
     }
 }

@@ -478,6 +478,14 @@ $(function () {
     }
 
     // Calculate priority when impact or urgency changes
+    var impactManuallySet = false;
+    $('#impact').on('change', function() {
+        // A real user interaction fires 'change'; the auto-suggestion below sets
+        // .val() via script, which does not dispatch 'change', so this only
+        // captures the user's own choice.
+        impactManuallySet = true;
+        $('#impact-suggestion').remove();
+    });
     $('#impact, #urgency').change(function() {
         if ($('#impact').val() && $('#urgency').val()) {
             calculatePriority();
@@ -537,33 +545,45 @@ $(function () {
             suggestedImpact = 'Low';
         }
         
-        // Update impact dropdown and show suggestion
+        // Show a suggestion, but never silently overwrite an impact the user
+        // (or a previous save) already set — this previously reset an
+        // existing outage's impact just from loading the edit page, if a
+        // customer count was already present.
         const $impactSelect = $('#impact');
         const $impactSuggestion = $('#impact-suggestion');
-        
+
         if (customersAffected > 0) {
-            $impactSelect.val(suggestedImpact);
-            
-            // Show suggestion text
-            if (!$impactSuggestion.length) {
-                $impactSelect.after(`<small id="impact-suggestion" class="form-text text-info">Suggested impact: ${suggestedImpact} (${customersAffected} customers)</small>`);
-            } else {
-                $impactSuggestion.text(`Suggested impact: ${suggestedImpact} (${customersAffected} customers)`);
+            if (!impactManuallySet) {
+                $impactSelect.val(suggestedImpact);
+                calculatePriority();
             }
-            
-            // Trigger priority calculation
-            calculatePriority();
+
+            const suggestionText = impactManuallySet
+                ? `Auto-suggested impact would be: ${suggestedImpact} (${customersAffected} customers)`
+                : `Suggested impact: ${suggestedImpact} (${customersAffected} customers)`;
+
+            if (!$impactSuggestion.length) {
+                $impactSelect.after(`<small id="impact-suggestion" class="form-text text-info">${suggestionText}</small>`);
+            } else {
+                $impactSuggestion.text(suggestionText);
+            }
         } else {
             $impactSuggestion.remove();
         }
     }
-    
+
     // Bind the calculation to Total Customers Affected input
     $('#total_customers_affected').on('input change', function() {
         calculateImpactFromCustomers();
     });
-    
-    // Initialize impact calculation on page load if value exists
+
+    // This is an edit form for an existing outage: if it already has an
+    // impact value (from the database, not a fresh create form), treat that
+    // as authoritative rather than letting the customer-count suggestion
+    // silently override it the moment the page loads.
+    if ($('#impact').val()) {
+        impactManuallySet = true;
+    }
     if ($('#total_customers_affected').val()) {
         calculateImpactFromCustomers();
     }

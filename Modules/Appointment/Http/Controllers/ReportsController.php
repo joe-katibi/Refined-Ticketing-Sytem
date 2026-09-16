@@ -35,22 +35,27 @@ class ReportsController extends Controller
         ->startOfMonth()
         ->format('Y-m-d')
     );
-    $endDate = $request->get('endDate', now()->format('Y-m-d'));
+    // Normalized to end-of-day so a same-day record (created after midnight
+    // on endDate) isn't silently excluded by whereBetween below â€” a bare
+    // 'Y-m-d' string compares as midnight, not end of day (see the
+    // $endDateTime = $endDate . ' 23:59:59' pattern already used elsewhere
+    // in this file, which this now matches).
+    $endDate = Carbon::parse($request->get('endDate', now()->format('Y-m-d')))->endOfDay()->format('Y-m-d H:i:s');
 
     // Overall SLA metrics (2 hours SLA for appointments)
     $totalAppointments = Appointment::whereBetween('created_at', [$startDate, $endDate])->count();
 
     $closedAppointments = Appointment::whereBetween('created_at', [$startDate, $endDate])
-      ->whereIn('status', ['Completed', 'Closed'])
+      ->whereIn('status', ['Scheduled-Closed', 'Completed', 'Closed'])
       ->count();
 
     $withinSla = Appointment::whereBetween('created_at', [$startDate, $endDate])
-      ->whereIn('status', ['Completed', 'Closed'])
+      ->whereIn('status', ['Scheduled-Closed', 'Completed', 'Closed'])
       ->whereRaw('TIMESTAMPDIFF(HOUR, created_at, completed_date) <= 2')
       ->count();
 
     $outsideSla = Appointment::whereBetween('created_at', [$startDate, $endDate])
-      ->whereIn('status', ['Completed', 'Closed'])
+      ->whereIn('status', ['Scheduled-Closed', 'Completed', 'Closed'])
       ->whereRaw('TIMESTAMPDIFF(HOUR, created_at, completed_date) > 2')
       ->count();
 
@@ -199,7 +204,7 @@ class ReportsController extends Controller
         ->startOfMonth()
         ->format('Y-m-d')
     );
-    $endDate = $request->get('endDate', now()->format('Y-m-d'));
+    $endDate = Carbon::parse($request->get('endDate', now()->format('Y-m-d')))->endOfDay()->format('Y-m-d H:i:s');
 
     // Get assigned team productivity metrics
     $assignedTeamMetrics = DB::table('appointments')
@@ -251,7 +256,7 @@ class ReportsController extends Controller
         ->startOfMonth()
         ->format('Y-m-d')
     );
-    $endDate = $request->get('endDate', now()->format('Y-m-d'));
+    $endDate = Carbon::parse($request->get('endDate', now()->format('Y-m-d')))->endOfDay()->format('Y-m-d H:i:s');
 
     // Get final reason metrics
     $finalReasonMetrics = DB::table('appointments')

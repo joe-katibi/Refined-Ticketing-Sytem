@@ -15,24 +15,17 @@ class DepartmentSeeder extends Seeder
      */
     public function run()
     {
-        DB::table('departments')->insert([
-            [
-
-            'department_name'=>'Information Technology',
-            'description'=>'Information Technology',
-            'created_by'=>'1',
-            'department_status'=>'1'
-
-
-            ],
-            [
-
-            'department_name'=>'Customer Experience',
-            'description'=>'Customer Experience',
-            'created_by'=>'1',
-            'department_status'=>'1'
-
-            ]
-    ]);
+        // Was a plain insert() with no uniqueness guard — running db:seed twice
+        // (e.g. as part of a deploy script, or by hand while diagnosing empty
+        // lookup tables) silently duplicated both departments every time.
+        foreach ([
+            ['department_name' => 'Information Technology', 'description' => 'Information Technology'],
+            ['department_name' => 'Customer Experience', 'description' => 'Customer Experience'],
+        ] as $department) {
+            DB::table('departments')->updateOrInsert(
+                ['department_name' => $department['department_name']],
+                array_merge($department, ['created_by' => 1, 'department_status' => 1])
+            );
+        }
     }
 }

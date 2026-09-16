@@ -25,8 +25,13 @@ Route::middleware('auth:api')->group(function () {
     // Additional API endpoints can be added here
     Route::post('outages/{outage}/update-status', [OutageController::class, 'updateStatus']);
     Route::post('outage-tickets/{ticket}/update-progress', [OutageTicketController::class, 'updateProgress']);
-
-    // Dynamic team assignment endpoints
-    Route::get('outages/team-types/{teamType}/sub-teams', [OutageController::class, 'getSubTeamTypes']);
-    Route::get('outages/sub-team-types/{subTeamType}/users', [OutageController::class, 'getUsersBySubTeamType']);
 });
+
+// Removed: duplicate GET outages/team-types/{teamType}/sub-teams and
+// outages/sub-team-types/{subTeamType}/users routes previously registered
+// here under auth:api. They resolved to the exact same URI as the
+// session-authenticated versions in Modules\Outages\routes\web.php (both
+// end up prefixed "api/outages/..."), and this file's auth:api-guarded copy
+// was winning the match — so every browser session hit it and got 401,
+// permanently breaking the Assigned Sub Team Type / Assigned To cascading
+// dropdowns on the outage create/edit forms for every web user.

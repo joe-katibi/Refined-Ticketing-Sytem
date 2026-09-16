@@ -28,6 +28,7 @@ class Outage extends Model
     'olt_id',
     'slot_id',
     'port_id',
+    'region_id',
     'start_time',
     'end_time',
     'root_cause',
@@ -284,19 +285,12 @@ class Outage extends Model
 
     $prefix = $prefixes[$ticketType] ?? 'OUT';
 
-    // Get the last ticket number for this type
-    $lastTicket = static::where('ticket_type', $ticketType)
-      ->where('ticket_number', 'like', $prefix . '-%')
-      ->orderBy('id', 'desc')
-      ->first();
-
-    if ($lastTicket) {
-      // Extract number from ticket format: PREFIX-NUMBER
-      $parts = explode('-', $lastTicket->ticket_number);
-      $number = isset($parts[1]) ? (int) $parts[1] + 1 : 1;
-    } else {
-      $number = 1;
-    }
+    // Previously read the last ticket via ORDER BY id DESC with no lock/transaction,
+    // the same race condition the spec explicitly warns against for appointment
+    // numbering (two concurrent requests can read the same "last ticket" and both
+    // compute the same next number). Uses the same locked-counter approach as
+    // Appointment ticket numbering.
+    $number = \App\Services\SequenceNumberService::next('outage:' . $prefix);
 
     return $prefix . '-' . $number;
   }

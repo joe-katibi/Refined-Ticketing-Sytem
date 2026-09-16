@@ -84,7 +84,10 @@ class OutageFinalReasonSeeder extends Seeder
         ];
 
         foreach ($finalReasons as $reason) {
-            OutageFinalReason::create($reason);
+            OutageFinalReason::firstOrCreate(
+                ['final_reason_name' => $reason['final_reason_name']],
+                $reason
+            );
         }
 
         Model::reguard();

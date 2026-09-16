@@ -11,6 +11,8 @@ class EscalationsDatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // $this->call([]);
+        $this->call([
+            EscalationCategorySeeder::class,
+        ]);
     }
 }

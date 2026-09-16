@@ -46,9 +46,9 @@ $configData = Helper::appClasses();
                     </div>
                 </div>
 
-                <!-- Second row: Department, Sub Department, Priority -->
+                <!-- Second row: Department, Sub Department, Priority, Region -->
                 <div class="row">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <div class="form-group mb-3">
                             <label for="department_id">Department</label>
                             <select name="department_id" id="department_id" class="form-control" required>
@@ -59,7 +59,7 @@ $configData = Helper::appClasses();
                             </select>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <div class="form-group mb-3">
                             <label for="sub_department_id">Sub Department</label>
                             <select name="sub_department_id" id="sub_department_id" class="form-control" required>
@@ -68,7 +68,7 @@ $configData = Helper::appClasses();
                             </select>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <div class="form-group mb-3">
                             <label for="priority">Priority</label>
                             <select name="priority" id="priority" class="form-control" required>
@@ -76,6 +76,18 @@ $configData = Helper::appClasses();
                                 <option value="Medium">Medium</option>
                                 <option value="High">High</option>
                             </select>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group mb-3">
+                            <label for="region_id">Region</label>
+                            <select name="region_id" id="region_id" class="form-control">
+                                <option value="">Select Region (optional)</option>
+                                @foreach($regions as $region)
+                                    <option value="{{ $region->id }}">{{ $region->name }}</option>
+                                @endforeach
+                            </select>
+                            <small class="form-text text-muted">Used for region-aware FIFO assignment.</small>
                         </div>
                     </div>
                 </div>

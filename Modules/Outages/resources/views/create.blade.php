@@ -401,6 +401,14 @@ $(function () {
     }
 
     // Calculate priority when impact or urgency changes
+    var impactManuallySet = false;
+    $('#impact').on('change', function() {
+        // A real user interaction fires 'change'; the auto-suggestion below sets
+        // .val() via script, which does not dispatch 'change', so this only
+        // captures the user's own choice.
+        impactManuallySet = true;
+        $('#impact-suggestion').remove();
+    });
     $('#impact, #urgency').change(function() {
         if ($('#impact').val() && $('#urgency').val()) {
             calculatePriority();
@@ -648,22 +656,28 @@ $(function () {
             suggestedImpact = 'Low';
         }
 
-        // Update impact dropdown and show suggestion
+        // Show a suggestion, but never silently overwrite an impact the user
+        // already picked themselves — this previously clobbered a manually
+        // selected "High" back down to an auto-suggested "Medium" the moment
+        // the customer count was entered, with no indication to the user.
         const $impactSelect = $('#impact');
         const $impactSuggestion = $('#impact-suggestion');
 
         if (customersAffected > 0) {
-            $impactSelect.val(suggestedImpact);
-
-            // Show suggestion text
-            if (!$impactSuggestion.length) {
-                $impactSelect.after(`<small id="impact-suggestion" class="form-text text-info">Suggested impact: ${suggestedImpact} (${customersAffected} customers)</small>`);
-            } else {
-                $impactSuggestion.text(`Suggested impact: ${suggestedImpact} (${customersAffected} customers)`);
+            if (!impactManuallySet) {
+                $impactSelect.val(suggestedImpact);
+                calculatePriority();
             }
 
-            // Trigger priority calculation
-            calculatePriority();
+            const suggestionText = impactManuallySet
+                ? `Auto-suggested impact would be: ${suggestedImpact} (${customersAffected} customers)`
+                : `Suggested impact: ${suggestedImpact} (${customersAffected} customers)`;
+
+            if (!$impactSuggestion.length) {
+                $impactSelect.after(`<small id="impact-suggestion" class="form-text text-info">${suggestionText}</small>`);
+            } else {
+                $impactSuggestion.text(suggestionText);
+            }
         } else {
             $impactSuggestion.remove();
         }

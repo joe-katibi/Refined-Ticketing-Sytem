@@ -84,7 +84,10 @@ class AffectedServiceSeeder extends Seeder
         ];
 
         foreach ($affectedServices as $service) {
-            AffectedService::create($service);
+            AffectedService::firstOrCreate(
+                ['service_name' => $service['service_name']],
+                $service
+            );
         }
 
         Model::reguard();

@@ -11,6 +11,7 @@ class AppointmentType extends Model
 {
     protected $fillable = [
         'type_name',
+        'code_prefix',
         'type_description',
         'type_status',
         'created_by',

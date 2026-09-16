@@ -52,6 +52,10 @@ $configData = Helper::appClasses();
                                     <span class="info-value">{{ $appointmentType->type_name }}</span>
                                 </div>
                                 <div class="mb-2">
+                                    <span class="info-label">Ticket Prefix:</span>
+                                    <span class="info-value">{{ $appointmentType->code_prefix }}</span>
+                                </div>
+                                <div class="mb-2">
                                     <span class="info-label">Status:</span>
                                     <span class="info-value">{!! $appointmentType->status_badge !!}</span>
                                 </div>

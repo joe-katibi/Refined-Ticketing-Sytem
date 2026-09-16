@@ -188,21 +188,21 @@ $configData = Helper::appClasses();
                                         </div>
                                         <div class="col-md-3">
                                             <div class="small-box bg-success text-white p-3 rounded">
-                                                <h3>{{ \Modules\Appointment\Models\Appointment::whereMonth('created_at', now()->month)->whereIn('status', ['Completed', 'Closed'])->count() }}</h3>
+                                                <h3>{{ \Modules\Appointment\Models\Appointment::whereMonth('created_at', now()->month)->whereIn('status', ['Scheduled-Closed', 'Completed', 'Closed'])->count() }}</h3>
                                                 <p class="mb-0">Closed This Month</p>
                                             </div>
                                         </div>
                                         <div class="col-md-3">
                                             <div class="small-box bg-warning text-dark p-3 rounded">
-                                                <h3>{{ \Modules\Appointment\Models\Appointment::whereMonth('created_at', now()->month)->whereNotIn('status', ['Completed', 'Closed'])->count() }}</h3>
+                                                <h3>{{ \Modules\Appointment\Models\Appointment::whereMonth('created_at', now()->month)->whereNotIn('status', ['Scheduled-Closed', 'Completed', 'Closed'])->count() }}</h3>
                                                 <p class="mb-0">Still Open</p>
                                             </div>
                                         </div>
                                         <div class="col-md-3">
                                             <div class="small-box bg-primary text-white p-3 rounded">
                                                 @php
-                                                    $monthlyTotal = \Modules\Appointment\Models\Appointment::whereMonth('created_at', now()->month)->whereIn('status', ['Completed', 'Closed'])->count();
-                                                    $monthlyWithinSla = \Modules\Appointment\Models\Appointment::whereMonth('created_at', now()->month)->whereIn('status', ['Completed', 'Closed'])->whereRaw('TIMESTAMPDIFF(HOUR, created_at, completed_date) <= 2')->count();
+                                                    $monthlyTotal = \Modules\Appointment\Models\Appointment::whereMonth('created_at', now()->month)->whereIn('status', ['Scheduled-Closed', 'Completed', 'Closed'])->count();
+                                                    $monthlyWithinSla = \Modules\Appointment\Models\Appointment::whereMonth('created_at', now()->month)->whereIn('status', ['Scheduled-Closed', 'Completed', 'Closed'])->whereRaw('TIMESTAMPDIFF(HOUR, created_at, completed_date) <= 2')->count();
                                                     $monthlyCompliance = $monthlyTotal > 0 ? round(($monthlyWithinSla / $monthlyTotal) * 100, 1) : 0;
                                                 @endphp
                                                 <h3>{{ $monthlyCompliance }}%</h3>

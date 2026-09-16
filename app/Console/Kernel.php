@@ -16,6 +16,9 @@ class Kernel extends ConsoleKernel
       
       // Clean up old report downloads every 8 hours
       $schedule->command('reports:cleanup --hours=8')->cron('0 */8 * * *');
+
+      // FIFO auto-dispatch — hands out any waiting ticket to an available agent.
+      $schedule->command('fifo:dispatch')->everyFiveMinutes();
     }
 
     /**

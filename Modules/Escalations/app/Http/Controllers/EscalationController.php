@@ -3,6 +3,7 @@
 namespace Modules\Escalations\App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Modules\Escalations\App\Models\Escalation;
 use Modules\Escalations\App\Models\EscalationHistory;
 use App\Http\Controllers\Controller;
@@ -56,7 +57,7 @@ class EscalationController extends Controller
             'notes' => 'nullable|string|max:1000',
         ]);
 
-        $escalation = Escalation::findOrFail($id);
+        $escalation = Escalation::findOrFail($escalationId);
         $oldStatus = $escalation->status;
         $escalation->status = $request->status;
         $escalation->edited_by = Auth::id();

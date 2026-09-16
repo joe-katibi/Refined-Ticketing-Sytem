@@ -80,27 +80,27 @@ class DashboardController extends Controller
             ->count();
 
         $todayClosed = Appointment::where('sub_department_id', $subDepartmentId)
-            ->whereIn('status', ['Completed', 'Closed'])
+            ->whereIn('status', ['Scheduled-Closed', 'Completed', 'Closed'])
             ->whereDate('completed_date', now()->toDateString())
             ->count();
 
         // Within SLA (2 hours)
         $todayClosedWithinSla = Appointment::where('sub_department_id', $subDepartmentId)
-            ->whereIn('status', ['Completed', 'Closed'])
+            ->whereIn('status', ['Scheduled-Closed', 'Completed', 'Closed'])
             ->whereDate('completed_date', now()->toDateString())
             ->whereRaw('TIMESTAMPDIFF(HOUR, created_at, completed_date) <= 2')
             ->count();
 
         // Outside SLA (2 hours)
         $todayClosedOutsideSla = Appointment::where('sub_department_id', $subDepartmentId)
-            ->whereIn('status', ['Completed', 'Closed'])
+            ->whereIn('status', ['Scheduled-Closed', 'Completed', 'Closed'])
             ->whereDate('completed_date', now()->toDateString())
             ->whereRaw('TIMESTAMPDIFF(HOUR, created_at, completed_date) > 2')
             ->count();
 
         // Calculate backlog (open appointments from previous days)
         $backlog = Appointment::where('sub_department_id', $subDepartmentId)
-            ->whereNotIn('status', ['Completed', 'Closed'])
+            ->whereNotIn('status', ['Scheduled-Closed', 'Completed', 'Closed'])
             ->whereDate('created_at', '<', now()->toDateString())
             ->count();
 
@@ -130,27 +130,27 @@ class DashboardController extends Controller
             ->count();
 
         $todayClosed = Appointment::where('sub_team_type_id', $subTeamId)
-            ->whereIn('status', ['Completed', 'Closed'])
+            ->whereIn('status', ['Scheduled-Closed', 'Completed', 'Closed'])
             ->whereDate('completed_date', now()->toDateString())
             ->count();
 
         // Within SLA (2 hours)
         $todayClosedWithinSla = Appointment::where('sub_team_type_id', $subTeamId)
-            ->whereIn('status', ['Completed', 'Closed'])
+            ->whereIn('status', ['Scheduled-Closed', 'Completed', 'Closed'])
             ->whereDate('completed_date', now()->toDateString())
             ->whereRaw('TIMESTAMPDIFF(HOUR, created_at, completed_date) <= 2')
             ->count();
 
         // Outside SLA (2 hours)
         $todayClosedOutsideSla = Appointment::where('sub_team_type_id', $subTeamId)
-            ->whereIn('status', ['Completed', 'Closed'])
+            ->whereIn('status', ['Scheduled-Closed', 'Completed', 'Closed'])
             ->whereDate('completed_date', now()->toDateString())
             ->whereRaw('TIMESTAMPDIFF(HOUR, created_at, completed_date) > 2')
             ->count();
 
         // Calculate backlog (open appointments from previous days)
         $backlog = Appointment::where('sub_team_type_id', $subTeamId)
-            ->whereNotIn('status', ['Completed', 'Closed'])
+            ->whereNotIn('status', ['Scheduled-Closed', 'Completed', 'Closed'])
             ->whereDate('created_at', '<', now()->toDateString())
             ->count();
 
@@ -180,27 +180,27 @@ class DashboardController extends Controller
             ->count();
 
         $todayClosed = Appointment::where('assigned_team_id', $teamId)
-            ->whereIn('status', ['Completed', 'Closed'])
+            ->whereIn('status', ['Scheduled-Closed', 'Completed', 'Closed'])
             ->whereDate('completed_date', now()->toDateString())
             ->count();
 
         // Within SLA (2 hours)
         $todayClosedWithinSla = Appointment::where('assigned_team_id', $teamId)
-            ->whereIn('status', ['Completed', 'Closed'])
+            ->whereIn('status', ['Scheduled-Closed', 'Completed', 'Closed'])
             ->whereDate('completed_date', now()->toDateString())
             ->whereRaw('TIMESTAMPDIFF(HOUR, created_at, completed_date) <= 2')
             ->count();
 
         // Outside SLA (2 hours)
         $todayClosedOutsideSla = Appointment::where('assigned_team_id', $teamId)
-            ->whereIn('status', ['Completed', 'Closed'])
+            ->whereIn('status', ['Scheduled-Closed', 'Completed', 'Closed'])
             ->whereDate('completed_date', now()->toDateString())
             ->whereRaw('TIMESTAMPDIFF(HOUR, created_at, completed_date) > 2')
             ->count();
 
         // Calculate backlog (open appointments from previous days)
         $backlog = Appointment::where('assigned_team_id', $teamId)
-            ->whereNotIn('status', ['Completed', 'Closed'])
+            ->whereNotIn('status', ['Scheduled-Closed', 'Completed', 'Closed'])
             ->whereDate('created_at', '<', now()->toDateString())
             ->count();
 
@@ -227,24 +227,24 @@ class DashboardController extends Controller
         // Today's metrics with SLA = 2 hours, TAT = 12 hours
         $todayReceived = Appointment::whereDate('created_at', now()->toDateString())->count();
 
-        $todayClosed = Appointment::whereIn('status', ['Completed', 'Closed'])
+        $todayClosed = Appointment::whereIn('status', ['Scheduled-Closed', 'Completed', 'Closed'])
             ->whereDate('completed_date', now()->toDateString())
             ->count();
 
         // Within SLA (2 hours)
-        $todayClosedWithinSla = Appointment::whereIn('status', ['Completed', 'Closed'])
+        $todayClosedWithinSla = Appointment::whereIn('status', ['Scheduled-Closed', 'Completed', 'Closed'])
             ->whereDate('completed_date', now()->toDateString())
             ->whereRaw('TIMESTAMPDIFF(HOUR, created_at, completed_date) <= 2')
             ->count();
 
         // Outside SLA (2 hours)
-        $todayClosedOutsideSla = Appointment::whereIn('status', ['Completed', 'Closed'])
+        $todayClosedOutsideSla = Appointment::whereIn('status', ['Scheduled-Closed', 'Completed', 'Closed'])
             ->whereDate('completed_date', now()->toDateString())
             ->whereRaw('TIMESTAMPDIFF(HOUR, created_at, completed_date) > 2')
             ->count();
 
         // Calculate backlog (open appointments from previous days)
-        $backlog = Appointment::whereNotIn('status', ['Completed', 'Closed'])
+        $backlog = Appointment::whereNotIn('status', ['Scheduled-Closed', 'Completed', 'Closed'])
             ->whereDate('created_at', '<', now()->toDateString())
             ->count();
 
@@ -256,7 +256,7 @@ class DashboardController extends Controller
         // Get sub team with highest backlog
         $highestBacklogTeam = DB::table('appointments')
             ->select('sub_team_type_id', DB::raw('COUNT(*) as backlog_count'))
-            ->whereNotIn('status', ['Completed', 'Closed'])
+            ->whereNotIn('status', ['Scheduled-Closed', 'Completed', 'Closed'])
             ->whereDate('created_at', '<', now()->toDateString())
             ->whereNotNull('sub_team_type_id')
             ->groupBy('sub_team_type_id')
@@ -270,12 +270,12 @@ class DashboardController extends Controller
         }
 
         // TAT metrics (12 hours)
-        $withinTat = Appointment::whereIn('status', ['Completed', 'Closed'])
+        $withinTat = Appointment::whereIn('status', ['Scheduled-Closed', 'Completed', 'Closed'])
             ->whereDate('completed_date', now()->toDateString())
             ->whereRaw('TIMESTAMPDIFF(HOUR, created_at, completed_date) <= 12')
             ->count();
 
-        $outsideTat = Appointment::whereIn('status', ['Completed', 'Closed'])
+        $outsideTat = Appointment::whereIn('status', ['Scheduled-Closed', 'Completed', 'Closed'])
             ->whereDate('completed_date', now()->toDateString())
             ->whereRaw('TIMESTAMPDIFF(HOUR, created_at, completed_date) > 12')
             ->count();

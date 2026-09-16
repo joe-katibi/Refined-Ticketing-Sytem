@@ -33,7 +33,16 @@ return [
     |
     */
 
-    'guard' => ['web', 'mobile'],
+    // Was ['web', 'mobile'] — 'mobile' is itself the Sanctum-driven guard
+    // (config/auth.php), so listing it here makes Sanctum's Guard::__invoke()
+    // call Auth::guard('mobile')->user(), which re-enters this same Sanctum
+    // guard, which checks ['web','mobile'] again, forever. Any request that
+    // ever touched the 'mobile' guard (e.g. the mobile.auth middleware doing
+    // a plain guest()/user() check) recursed until PHP's memory limit was
+    // exhausted, killing the whole request with an empty body — the mobile
+    // API's protected endpoints (profile, appointments, outages, ...) could
+    // never work while this was in place, independent of anything else.
+    'guard' => ['web'],
 
     /*
     |--------------------------------------------------------------------------

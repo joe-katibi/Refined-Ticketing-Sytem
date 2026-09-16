@@ -110,6 +110,7 @@ $configData = Helper::appClasses();
         var initialTeamTypeId = $('#team_type_id').val();
         var initialSubTeamId = "{{ $appointment->sub_team_type_id ?? '' }}";
         var initialAssignedTeamId = "{{ $appointment->assigned_team_id ?? '' }}";
+        var initialAssignedToId = "{{ $appointment->assigned_to ?? '' }}";
 
         console.log('Initial team type ID:', initialTeamTypeId);
         console.log('Initial sub-team ID:', initialSubTeamId);
@@ -119,12 +120,17 @@ $configData = Helper::appClasses();
         if (initialTeamTypeId) {
             console.log('Loading initial sub-teams...');
             loadSubTeams(initialTeamTypeId, initialSubTeamId);
-            
+
             // Load assigned teams if team type is Outsource partner
             if (initialTeamTypeId == 2) {
                 console.log('Loading initial assigned teams...');
                 loadAssignedTeams(initialAssignedTeamId);
             }
+        }
+
+        // Load technicians (Assigned To) on page load if a sub team is already selected
+        if (initialSubTeamId) {
+            loadTechnicians(initialSubTeamId, initialAssignedToId);
         }
 
         // Handle team type change
@@ -138,12 +144,72 @@ $configData = Helper::appClasses();
 
             // Load sub-teams
             loadSubTeams(teamTypeId);
-            
+
             // Load assigned teams if team type is Outsource partner
             if (teamTypeId == 2) {
                 loadAssignedTeams();
             }
+
+            // Changing the team invalidates the previously loaded technician list
+            $('#assigned_to').empty().append('<option value="">Select Sub Team first</option>').prop('disabled', true);
         });
+
+        // Handle sub team change: reload the technician ("Assigned To") list
+        // scoped to the newly selected sub team.
+        $('#sub_team_type_id').on('change', function() {
+            var subTeamTypeId = $(this).val();
+            loadTechnicians(subTeamTypeId);
+        });
+
+        /**
+         * Load active technicians belonging to a sub team type, for the
+         * "Assigned To" dropdown.
+         */
+        function loadTechnicians(subTeamTypeId, selectedUserId = null) {
+            var assignedToSelect = $('#assigned_to');
+
+            if (!subTeamTypeId) {
+                assignedToSelect.empty().append('<option value="">Select Sub Team first</option>').prop('disabled', true);
+                return;
+            }
+
+            assignedToSelect.empty().prop('disabled', true);
+            assignedToSelect.append('<option value="">Loading technicians...</option>');
+
+            $.ajax({
+                url: '/appointments/sub-team-types/' + subTeamTypeId + '/users',
+                type: 'GET',
+                dataType: 'json',
+                success: function(response) {
+                    assignedToSelect.empty().prop('disabled', false);
+                    assignedToSelect.append('<option value="">Select Technician (optional)</option>');
+
+                    var users = (response && response.users) ? response.users : [];
+                    if (users.length > 0) {
+                        $.each(users, function(index, user) {
+                            var selected = (user.id == selectedUserId) ? 'selected' : '';
+                            assignedToSelect.append('<option value="' + user.id + '" ' + selected + '>' + user.name + '</option>');
+                        });
+                        if (selectedUserId) {
+                            assignedToSelect.val(selectedUserId);
+                        }
+                    } else {
+                        assignedToSelect.append('<option value="">No technicians in this sub team</option>');
+                    }
+
+                    assignedToSelect.select2('destroy');
+                    assignedToSelect.select2({
+                        theme: 'bootstrap-5',
+                        width: '100%',
+                        dropdownParent: $('body')
+                    });
+                },
+                error: function() {
+                    assignedToSelect.empty().prop('disabled', false);
+                    assignedToSelect.append('<option value="">Error loading technicians</option>');
+                }
+            });
+        }
         
         // Handle assigned team change
         $('#assigned_team_id').on('change', function() {
@@ -403,10 +469,23 @@ $configData = Helper::appClasses();
                                 <label for="priority" class="form-label">Priority <span class="text-danger">*</span></label>
                                 <select class="form-select @error('priority') is-invalid @enderror"
                                         id="priority" name="priority" required>
+                                    @php
+                                        // Appointments created via the escalation-to-appointment
+                                        // conversion (EscalationsController::update()) validate and
+                                        // store priority lowercase ("high"), while this dropdown's
+                                        // values are capitalized ("High") and the update() validation
+                                        // rule below requires exactly 'High|Medium|Low' — a plain ==
+                                        // comparison here never matched, so the field silently stayed
+                                        // on its blank placeholder for every such appointment. Being
+                                        // `required`, that made the browser block submission of this
+                                        // entire form client-side with no visible error — dispatchers
+                                        // could never assign a team/technician to these tickets.
+                                        $currentPriority = strtolower((string) $appointment->priority);
+                                    @endphp
                                     <option value="">Select Priority</option>
-                                    <option value="High" {{ (old('priority', $appointment->priority) == 'High') ? 'selected' : '' }}>High</option>
-                                    <option value="Medium" {{ (old('priority', $appointment->priority) == 'Medium') ? 'selected' : '' }}>Medium</option>
-                                    <option value="Low" {{ (old('priority', $appointment->priority) == 'Low') ? 'selected' : '' }}>Low</option>
+                                    <option value="High" {{ $currentPriority === 'high' ? 'selected' : '' }}>High</option>
+                                    <option value="Medium" {{ $currentPriority === 'medium' ? 'selected' : '' }}>Medium</option>
+                                    <option value="Low" {{ $currentPriority === 'low' ? 'selected' : '' }}>Low</option>
                                 </select>
                                 @error('priority')
                                     <div class="invalid-feedback">{{ $message }}</div>
@@ -469,10 +548,23 @@ $configData = Helper::appClasses();
                                 <label for="status" class="form-label">Status <span class="text-danger">*</span></label>
                                 <select class="form-select @error('status') is-invalid @enderror"
                                         id="status" name="status" required>
+                                    @php
+                                        // Same bug as the Priority field above: the sibling
+                                        // "assigned" edit page (edit_assigned.blade.php) writes
+                                        // Title-Case-With-Hyphens status strings ("Escalated-Design"),
+                                        // while this dropdown's values come straight from the
+                                        // appointment_statuses table (lowercase-hyphenated,
+                                        // "escalated-design"). A plain == comparison never matched
+                                        // once a ticket had passed through that other page, so this
+                                        // required field silently sat on its blank placeholder and
+                                        // the browser blocked submission of the whole form —
+                                        // including the Team/Sub Team/Assigned To fields below.
+                                        $currentStatusNormalized = strtolower(str_replace(' ', '-', (string) $appointment->status));
+                                    @endphp
                                     <option value="">Select Status</option>
                                     @foreach($statuses as $status)
-                                        <option value="{{ $status->name }}" 
-                                            {{ old('status', $appointment->status) == $status->name ? 'selected' : '' }}
+                                        <option value="{{ $status->name }}"
+                                            {{ strtolower($status->name) === $currentStatusNormalized ? 'selected' : '' }}
                                             data-color="{{ $status->color }}"
                                             data-badge-class="{{ $status->badge_class }}"
                                         >
@@ -531,6 +623,21 @@ $configData = Helper::appClasses();
                                   <option value="">Select Sub Team</option>
                               </select>
                               @error('sub_team_type_id')
+                                  <div class="invalid-feedback">{{ $message }}</div>
+                              @enderror
+                          </div>
+                      </div>
+                      <div class="col-md-6">
+                          <div class="mb-3">
+                              <label for="assigned_to" class="form-label">Assigned To (Technician)</label>
+                              <select name="assigned_to" id="assigned_to" class="form-select select2 @error('assigned_to') is-invalid @enderror">
+                                  <option value="">Select Sub Team first</option>
+                                  @if($appointment->assigned_to && $appointment->assignee)
+                                      <option value="{{ $appointment->assigned_to }}" selected>{{ $appointment->assignee->name }}</option>
+                                  @endif
+                              </select>
+                              <small class="form-text text-muted">Only technicians in the selected Sub Team appear here. The mobile app's "My Appointments"/"My Outages" views match on this field.</small>
+                              @error('assigned_to')
                                   <div class="invalid-feedback">{{ $message }}</div>
                               @enderror
                           </div>

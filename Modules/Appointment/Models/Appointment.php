@@ -37,6 +37,8 @@ class Appointment extends Model
     'completed_date',
     'completed_time',
     'assigned_team_id',
+    'assigned_to',
+    'region_id',
     'escalated_team_id',
     'team_type_id',
     'sub_team_type_id',
@@ -106,6 +108,19 @@ class Appointment extends Model
   public function assignedTeam(): BelongsTo
   {
     return $this->belongsTo(\App\Models\Team::class, 'assigned_team_id');
+  }
+
+  /**
+   * The individual technician assigned to this appointment. Referenced by
+   * the edit form and by MobileAppointmentController's technician views,
+   * which filter strictly on assigned_to — but no relation existed here
+   * before, so any code eager-loading or accessing ->assignee would have
+   * thrown a RelationNotFoundException the first time assigned_to was
+   * actually set on a real appointment.
+   */
+  public function assignee(): BelongsTo
+  {
+    return $this->belongsTo(\App\Models\User::class, 'assigned_to');
   }
 
   public function escalatedTeam(): BelongsTo

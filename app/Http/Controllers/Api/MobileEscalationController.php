@@ -4,21 +4,38 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use Modules\Escalations\Entities\Escalation;
-use Modules\Escalations\Entities\EscalationHistory;
+use Modules\Escalations\App\Models\Escalation;
+use Modules\Escalations\App\Models\EscalationHistory;
 
+/**
+ * This entire controller previously targeted a schema that does not exist —
+ * `escalations.user_id`, `customer_name`, `customer_phone`, `issue_description`,
+ * `location`, a `user` relation, `status` values like 'open'/'closed', and
+ * `departments.name`/`status='active'` (the real columns are
+ * `department_name`/`department_status`, an integer). Every method here 500'd
+ * on every call. Rewritten to match the real `escalations` table (as used by
+ * the working web create flow in Modules\Escalations\Http\Controllers\ListController)
+ * and the real `escalation_histories` schema.
+ *
+ * Uses Modules\Escalations\App\Models\Escalation, NOT
+ * Modules\Escalations\Entities\Escalation — the latter has a boot() hook that
+ * auto-generates `escalation_id` as a string ticket number ("ESC-N"), but the
+ * real `escalations.escalation_id` column is an integer FK to
+ * `escalation_lists.id` (see ListController::store()); creating through the
+ * Entities class throws "Incorrect integer value: 'ESC-2'". The App\Models
+ * class has no such hook and matches what the working web flow actually uses.
+ */
 class MobileEscalationController extends Controller
 {
     /**
-     * Get escalations for sales team (view only)
+     * List escalations created by the current mobile user.
      */
     public function index(Request $request)
     {
         $user = $request->user();
-        
-        // Sales team can only see their own escalations
-        $escalations = Escalation::with(['department', 'subDepartment', 'user'])
-            ->where('user_id', $user->id)
+
+        $escalations = Escalation::with(['department', 'subDepartment', 'subcategory'])
+            ->where('created_by', $user->id)
             ->orderBy('created_at', 'desc')
             ->paginate(20);
 
@@ -34,68 +51,72 @@ class MobileEscalationController extends Controller
     }
 
     /**
-     * Create new sales escalation
+     * Create a new escalation from the mobile app.
      */
     public function store(Request $request)
     {
         $user = $request->user();
-        
-        // Only sales team can create escalations
-        if (!$user->hasRole('escalations-agent')) {
-            return response()->json([
-                'message' => 'Access denied. Only sales team can create escalations.'
-            ], 403);
-        }
 
-        $request->validate([
-            'customer_name' => 'required|string|max:255',
-            'customer_phone' => 'required|string|max:20',
-            'customer_email' => 'nullable|email|max:255',
-            'issue_description' => 'required|string',
-            'priority' => 'required|in:low,medium,high,critical',
+        $validated = $request->validate([
+            'account_number' => 'required|string|max:255',
+            'category_id' => 'required|exists:categories,id',
+            'sub_category_id' => 'required|exists:subcategories,id',
             'department_id' => 'required|exists:departments,id',
             'sub_department_id' => 'nullable|exists:sub_departments,id',
-            'location' => 'nullable|string|max:255',
+            'description' => 'required|string',
+            'priority' => 'required|in:Low,Medium,High',
         ]);
 
-        $escalation = Escalation::create([
-            'customer_name' => $request->customer_name,
-            'customer_phone' => $request->customer_phone,
-            'customer_email' => $request->customer_email,
-            'issue_description' => $request->issue_description,
-            'priority' => $request->priority,
-            'status' => 'open',
-            'department_id' => $request->department_id,
-            'sub_department_id' => $request->sub_department_id,
-            'location' => $request->location,
-            'user_id' => $user->id,
-        ]);
+        $escalation = \Illuminate\Support\Facades\DB::transaction(function () use ($validated, $user) {
+            $ticketNumber = \App\Services\SequenceNumberService::next('escalation:ESC');
+            $ticketId = 'ESC-' . $ticketNumber;
 
-        // Create history record
-        EscalationHistory::create([
-            'escalation_id' => $escalation->id,
-            'user_id' => $user->id,
-            'action' => 'created',
-            'old_values' => null,
-            'new_values' => json_encode($escalation->toArray()),
-            'notes' => 'Escalation created via mobile app',
-        ]);
+            $escalation = Escalation::create(array_merge($validated, [
+                'ticket_id' => $ticketId,
+                'status' => 'Escalated-Open',
+                'assigned_to' => null,
+                'created_by' => $user->id,
+            ]));
+
+            EscalationHistory::create([
+                'escalation_id' => $escalation->id,
+                'ticket_id' => $ticketId,
+                'status' => 'Escalated-Open',
+                'department_id' => $validated['department_id'],
+                'category_id' => $validated['category_id'],
+                'sub_category_id' => $validated['sub_category_id'],
+                'description' => $validated['description'],
+                'account_number' => $validated['account_number'],
+                'priority' => $validated['priority'],
+                'sub_department_id' => $validated['sub_department_id'] ?? null,
+                'action_by' => $user->id,
+            ]);
+
+            (new \App\Services\Fifo\FifoQueueService())->enqueue(
+                'escalation',
+                'escalation',
+                $escalation->id,
+                $validated['priority']
+            );
+
+            return $escalation;
+        });
 
         return response()->json([
             'message' => 'Escalation created successfully',
-            'escalation' => $escalation->load(['department', 'subDepartment'])
+            'escalation' => $escalation->load(['department', 'subDepartment']),
         ], 201);
     }
 
     /**
-     * Get specific escalation details
+     * Get specific escalation details (only if the mobile user created it).
      */
     public function show(Request $request, $id)
     {
         $user = $request->user();
-        
-        $escalation = Escalation::with(['department', 'subDepartment', 'user'])
-            ->where('user_id', $user->id)
+
+        $escalation = Escalation::with(['department', 'subDepartment', 'subcategory'])
+            ->where('created_by', $user->id)
             ->findOrFail($id);
 
         return response()->json([
@@ -104,15 +125,15 @@ class MobileEscalationController extends Controller
     }
 
     /**
-     * Get escalation history
+     * Get escalation history.
      */
     public function history(Request $request, $id)
     {
         $user = $request->user();
-        
-        $escalation = Escalation::where('user_id', $user->id)->findOrFail($id);
 
-        $history = EscalationHistory::with('user')
+        Escalation::where('created_by', $user->id)->findOrFail($id);
+
+        $history = EscalationHistory::with('actionBy')
             ->where('escalation_id', $id)
             ->orderBy('created_at', 'desc')
             ->get();
@@ -123,14 +144,14 @@ class MobileEscalationController extends Controller
     }
 
     /**
-     * Get departments for escalation creation
+     * Get departments for escalation creation.
      */
     public function departments(Request $request)
     {
         $departments = \DB::table('departments')
-            ->select('id', 'name')
-            ->where('status', 'active')
-            ->orderBy('name')
+            ->select('id', 'department_name as name')
+            ->where('department_status', 1)
+            ->orderBy('department_name')
             ->get();
 
         return response()->json([
@@ -139,15 +160,15 @@ class MobileEscalationController extends Controller
     }
 
     /**
-     * Get sub-departments for selected department
+     * Get sub-departments for the selected department.
      */
     public function subDepartments(Request $request, $departmentId)
     {
         $subDepartments = \DB::table('sub_departments')
-            ->select('id', 'name')
+            ->select('id', 'sub_department_name as name')
             ->where('department_id', $departmentId)
-            ->where('status', 'active')
-            ->orderBy('name')
+            ->where('sub_department_status', 1)
+            ->orderBy('sub_department_name')
             ->get();
 
         return response()->json([
@@ -156,20 +177,57 @@ class MobileEscalationController extends Controller
     }
 
     /**
-     * Get user's escalation performance metrics
+     * Get categories for escalation creation. The mobile create-escalation
+     * form has always required category_id/sub_category_id (see store()
+     * above), but there was no endpoint anywhere for the app to fetch the
+     * list of valid categories — it could never populate that dropdown.
+     */
+    public function categories(Request $request)
+    {
+        $categories = \DB::table('categories')
+            ->select('id', 'category_name as name')
+            ->where('status', 'Active')
+            ->orderBy('category_name')
+            ->get();
+
+        return response()->json([
+            'categories' => $categories
+        ]);
+    }
+
+    /**
+     * Get subcategories for the selected category.
+     */
+    public function subCategories(Request $request, $categoryId)
+    {
+        $subCategories = \DB::table('subcategories')
+            ->select('id', 'sub_category_name as name')
+            ->where('category_id', $categoryId)
+            ->where('status', 'Active')
+            ->orderBy('sub_category_name')
+            ->get();
+
+        return response()->json([
+            'sub_categories' => $subCategories
+        ]);
+    }
+
+    /**
+     * Get the mobile user's own escalation performance metrics.
      */
     public function performance(Request $request)
     {
         $user = $request->user();
-        
-        $totalEscalations = Escalation::where('user_id', $user->id)->count();
-        $openEscalations = Escalation::where('user_id', $user->id)
-            ->where('status', 'open')->count();
-        $closedEscalations = Escalation::where('user_id', $user->id)
-            ->where('status', 'closed')->count();
-        
-        $closureRate = $totalEscalations > 0 ? 
-            round(($closedEscalations / $totalEscalations) * 100, 2) : 0;
+
+        $totalEscalations = Escalation::where('created_by', $user->id)->count();
+        $openEscalations = Escalation::where('created_by', $user->id)
+            ->where('status', 'Escalated-Open')->count();
+        $closedEscalations = Escalation::where('created_by', $user->id)
+            ->where('status', 'Escalated-Closed')->count();
+
+        $closureRate = $totalEscalations > 0
+            ? round(($closedEscalations / $totalEscalations) * 100, 2)
+            : 0;
 
         return response()->json([
             'performance' => [

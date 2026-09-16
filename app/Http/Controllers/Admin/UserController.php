@@ -79,9 +79,12 @@ class UserController extends Controller
     // Total users count
     $totalUsers = User::count();
 
-    // Active and inactive users
-    $activeUsers = User::where('user_status', 'Active')->count();
-    $inactiveUsers = User::where('user_status', 'Inactive')->count();
+    // Active and inactive users. `user_status` is stored as 1/0 (see
+    // activate()/deactivate() below) — querying the strings 'Active'/
+    // 'Inactive' never matched any row, so this dashboard always showed 0/0
+    // regardless of how many users existed.
+    $activeUsers = User::where('user_status', 1)->count();
+    $inactiveUsers = User::where('user_status', 0)->count();
 
     // Users per department with department names
     $usersPerDepartment = User::select('departments.department_name', \DB::raw('count(*) as user_count'))

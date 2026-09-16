@@ -46,6 +46,7 @@ class Escalation extends Model
         'sub_category_id',
         'department_id',
         'sub_department_id',
+        'region_id',
         'description',
         'priority',
         'status',

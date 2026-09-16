@@ -157,9 +157,23 @@ $configData = Helper::appClasses();
                                         <label for="status" class="form-label">Status <span class="text-danger">*</span></label>
                                         <select class="form-select @error('status') is-invalid @enderror"
                                                 id="status" name="status" required>
+                                            @php
+                                                // Other flows (store(), the admin edit() page, the
+                                                // escalation-to-appointment conversion) write status
+                                                // as lowercase-hyphenated ("scheduled-assigned-team"),
+                                                // while this page's options are Title-Case-With-Hyphens
+                                                // to match updateAssigned()'s own string checks (e.g.
+                                                // 'Scheduled-Closed'). A plain === comparison against
+                                                // $appointment->status therefore never matched, so this
+                                                // dropdown always silently defaulted to its first option
+                                                // regardless of the ticket's real status — normalize both
+                                                // sides before comparing.
+                                                $normalize = fn($v) => strtolower(str_replace(' ', '-', $v ?? ''));
+                                                $currentStatusNormalized = $normalize($appointment->status);
+                                            @endphp
                                             @foreach(['Scheduled-Open','Scheduled-Closed','Escalated-Open','Escalated-Closed','In-Progress','Rescheduled','Escalated-Infrastructure','Support-Post-Install',
-'Escalated-Noc','Scheduled-Assigned Team','Cancelled'] as $status)
-                                                <option value="{{ $status }}" {{ $appointment->status === $status ? 'selected' : '' }}>
+'Escalated-Noc','Escalated-Design','Scheduled-Assigned Team','Cancelled'] as $status)
+                                                <option value="{{ $status }}" {{ $normalize($status) === $currentStatusNormalized ? 'selected' : '' }}>
                                                     {{ $status }}
                                                 </option>
                                             @endforeach
@@ -290,23 +304,6 @@ $configData = Helper::appClasses();
                                         <textarea class="form-control @error('closing_reason') is-invalid @enderror"
                                                   id="closing_reason" name="closing_reason" rows="3">{{ old('closing_reason', $appointment->closing_reason) }}</textarea>
                                         @error('closing_reason')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
-                                    </div>
-
-                                    <!-- Final Reason -->
-                                    <div class="mb-3">
-                                        <label for="final_reason" class="form-label">Final Reason</label>
-                                        <select class="form-select @error('final_reason') is-invalid @enderror"
-                                                id="final_reason" name="final_reason">
-                                            <option value="">Select Final Reason</option>
-                                            @foreach($finalReasons as $reason)
-                                                <option value="{{ $reason->id }}" {{ old('final_reason', $appointment->final_reason_id) == $reason->id ? 'selected' : '' }}>
-                                                    {{ $reason->name }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                        @error('final_reason')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>

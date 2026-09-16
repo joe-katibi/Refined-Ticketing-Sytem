@@ -26,9 +26,13 @@ class OutageReportController extends OutagesController
      */
     public function index()
     {
-        // Get date range from request or default to last month
+        // Get date range from request or default to last month.
+        // Normalized to end-of-day so a same-day record isn't silently
+        // excluded by whereBetween below — a bare 'Y-m-d' string compares
+        // as midnight, not end of day (see the identical fix applied to
+        // every other date-range method in this controller).
         $startDate = request('start_date', now()->subMonth()->format('Y-m-d'));
-        $endDate = request('end_date', now()->format('Y-m-d'));
+        $endDate = Carbon::parse(request('end_date', now()->format('Y-m-d')))->endOfDay()->format('Y-m-d H:i:s');
         $teamFilter = request('team_filter');
 
         // Get team types for filter dropdown (Infrastructure teams)
@@ -36,32 +40,43 @@ class OutageReportController extends OutagesController
             $q->where('department_name', 'Infrastructure');
         })->orderBy('type_name')->get();
 
-        // Build base query with date filters (unified outages table)
-        $outagesQuery = Outage::whereBetween('start_time', [$startDate, $endDate]);
-
-        // Apply team filter if selected
-        if ($teamFilter) {
-            $outagesQuery->where('assigned_team_id', $teamFilter);
-        }
+        // Build a fresh base query per metric instead of reusing one mutable
+        // builder. Eloquent query builders accumulate every ->where() call
+        // made on them — the original code ran ALL of these off a single
+        // $outagesQuery variable, so by the time later metrics ran, they
+        // silently inherited every filter applied by earlier ones (sla_breached,
+        // status='Resolved', impact, whereNotNull, etc. all stacked together).
+        // The Impact/Root-Cause cards at the bottom ended up filtered by
+        // nearly everything above them and always returned 0/"Unknown"
+        // regardless of real data.
+        $baseQuery = function () use ($startDate, $endDate, $teamFilter) {
+            $query = Outage::whereBetween('start_time', [$startDate, $endDate]);
+            if ($teamFilter) {
+                $query->where('assigned_team_id', $teamFilter);
+            }
+            return $query;
+        };
 
         // Calculate SLA metrics
-        $totalOutages = $outagesQuery->count();
-        $breachedOutages = $outagesQuery->where('sla_breached', true)->count();
+        $totalOutages = $baseQuery()->count();
+        $breachedOutages = $baseQuery()->where('sla_breached', true)->count();
         $complianceRate = $totalOutages > 0 ? round((($totalOutages - $breachedOutages) / $totalOutages) * 100, 1) : 100;
-        
+
         $slaMetrics = [
             'compliance_rate' => $complianceRate,
             'breach_count' => $breachedOutages,
             'total_outages' => $totalOutages
         ];
 
-        // Calculate productivity metrics
-        $resolvedOutages = $outagesQuery->where('status', 'Resolved')->count();
-        $avgResolutionTime = $outagesQuery->where('status', 'Resolved')
+        // Calculate productivity metrics. 'Resolved' is not a real status
+        // value (see Outage::scopeResolved()) — the real "done" statuses are
+        // infra-resolved/support-closed — so this always matched 0 rows too.
+        $resolvedOutages = (clone $baseQuery())->resolved()->count();
+        $avgResolutionTime = (clone $baseQuery())->resolved()
             ->whereNotNull('end_time')
             ->selectRaw('AVG(TIMESTAMPDIFF(HOUR, start_time, end_time)) as avg_hours')
             ->value('avg_hours');
-        
+
         $productivityMetrics = [
             'total_resolved' => $resolvedOutages,
             'avg_resolution_time' => $avgResolutionTime ? round($avgResolutionTime, 1) . 'h' : 'N/A'
@@ -79,27 +94,27 @@ class OutageReportController extends OutagesController
         $previousPeriodStart = now()->parse($startDate)->subMonth()->format('Y-m-d');
         $previousPeriodEnd = now()->parse($endDate)->subMonth()->format('Y-m-d');
         $previousPeriodCount = Outage::whereBetween('start_time', [$previousPeriodStart, $previousPeriodEnd])->count();
-        
+
         $trendDirection = $totalOutages > $previousPeriodCount ? '↑' : ($totalOutages < $previousPeriodCount ? '↓' : '→');
-        
+
         $trendMetrics = [
             'monthly_avg' => $monthlyAvg,
             'trend_direction' => $trendDirection
         ];
 
         // Calculate impact metrics (now using unified outages table with impact/urgency fields)
-        $highImpactCount = $outagesQuery->where(function($q) {
+        $highImpactCount = $baseQuery()->where(function($q) {
             $q->where('impact', 'Critical')->orWhere('impact', 'High');
         })->count();
-        $totalDowntime = $outagesQuery->where('status', 'Resolved')
+        $totalDowntime = (clone $baseQuery())->resolved()
             ->whereNotNull('end_time')
             ->selectRaw('SUM(TIMESTAMPDIFF(HOUR, start_time, end_time)) as total_hours')
             ->value('total_hours');
-        
+
         // Calculate total customers affected
-        $totalCustomersAffected = $outagesQuery->whereNotNull('total_customers_affected')
+        $totalCustomersAffected = $baseQuery()->whereNotNull('total_customers_affected')
             ->sum('total_customers_affected');
-        
+
         $impactMetrics = [
             'high_impact_count' => $highImpactCount,
             'total_downtime' => $totalDowntime ? round($totalDowntime, 1) . 'h' : '0h',
@@ -107,16 +122,16 @@ class OutageReportController extends OutagesController
         ];
 
         // Calculate root cause metrics
-        $topCause = $outagesQuery->select('root_cause')
+        $topCause = $baseQuery()->select('root_cause')
             ->whereNotNull('root_cause')
             ->groupBy('root_cause')
             ->orderByRaw('COUNT(*) DESC')
             ->value('root_cause') ?: 'Unknown';
-        
-        $categoriesCount = $outagesQuery->whereNotNull('root_cause')
+
+        $categoriesCount = $baseQuery()->whereNotNull('root_cause')
             ->distinct('root_cause')
             ->count('root_cause');
-        
+
         $rootCauseMetrics = [
             'top_cause' => $topCause,
             'categories_count' => $categoriesCount
@@ -139,7 +154,12 @@ class OutageReportController extends OutagesController
     public function sla(Request $request)
     {
         $startDate = $request->get('start_date', Carbon::now()->subDays(30)->format('Y-m-d'));
-        $endDate = $request->get('end_date', Carbon::now()->format('Y-m-d'));
+        // Normalized to end-of-day here (not per whereBetween call below) so
+        // every date-range query in this method includes records created
+        // later on the end date — a bare 'Y-m-d' string compares as midnight,
+        // silently excluding same-day records and making "Total" counts read
+        // 0 even when matching rows exist within the selected range.
+        $endDate = Carbon::parse($request->get('end_date', Carbon::now()->format('Y-m-d')))->endOfDay()->format('Y-m-d H:i:s');
 
         // Overall SLA metrics
         $totalOutages = Outage::whereBetween('created_at', [$startDate, $endDate])->count();
@@ -156,7 +176,13 @@ class OutageReportController extends OutagesController
             ->selectRaw('ROUND((COUNT(*) - COUNT(CASE WHEN sla_breached = 1 THEN 1 END)) / COUNT(*) * 100, 2) as compliance_rate')
             ->whereBetween('created_at', [$startDate, $endDate])
             ->groupBy('priority')
-            ->get();
+            ->get()
+            // The view iterates this as `foreach ($slaByPriority as $priority
+            // => $data)` expecting $priority to be the priority name — a
+            // plain, non-keyed Collection instead yields the row's numeric
+            // index (0, 1, ...), so the report displayed "0"/"1" instead of
+            // Low/Medium/High/Critical.
+            ->keyBy('priority');
 
         // SLA metrics by team
         $slaByTeam = Outage::select('team_types.type_name as team_name')
@@ -191,7 +217,12 @@ class OutageReportController extends OutagesController
     public function productivity(Request $request)
     {
         $startDate = $request->get('start_date', Carbon::now()->subDays(30)->format('Y-m-d'));
-        $endDate = $request->get('end_date', Carbon::now()->format('Y-m-d'));
+        // Normalized to end-of-day here (not per whereBetween call below) so
+        // every date-range query in this method includes records created
+        // later on the end date — a bare 'Y-m-d' string compares as midnight,
+        // silently excluding same-day records and making "Total" counts read
+        // 0 even when matching rows exist within the selected range.
+        $endDate = Carbon::parse($request->get('end_date', Carbon::now()->format('Y-m-d')))->endOfDay()->format('Y-m-d H:i:s');
 
         // Team productivity
         $teamProductivity = \App\Models\TeamType::select('team_types.type_name as name')
@@ -219,7 +250,7 @@ class OutageReportController extends OutagesController
                 THEN TIMESTAMPDIFF(MINUTE, resolved_outages.start_time, resolved_outages.end_time) END) as avg_resolution_time')
             ->leftJoin('outages', 'users.id', '=', 'outages.assigned_to')
             ->leftJoin('outages as resolved_outages', 'users.id', '=', 'resolved_outages.resolved_by')
-            ->where('users.user_status', 'Active')
+            ->where('users.user_status', 1)
             ->whereBetween('outages.created_at', [$startDate, $endDate])
             ->orWhereBetween('resolved_outages.created_at', [$startDate, $endDate])
             ->groupBy('users.id', 'users.name')
@@ -245,7 +276,12 @@ class OutageReportController extends OutagesController
     public function slaBreakdown(Request $request)
     {
         $startDate = $request->get('start_date', Carbon::now()->subDays(30)->format('Y-m-d'));
-        $endDate = $request->get('end_date', Carbon::now()->format('Y-m-d'));
+        // Normalized to end-of-day here (not per whereBetween call below) so
+        // every date-range query in this method includes records created
+        // later on the end date — a bare 'Y-m-d' string compares as midnight,
+        // silently excluding same-day records and making "Total" counts read
+        // 0 even when matching rows exist within the selected range.
+        $endDate = Carbon::parse($request->get('end_date', Carbon::now()->format('Y-m-d')))->endOfDay()->format('Y-m-d H:i:s');
 
         // Within SLA vs Outside SLA breakdown
         $withinSLA = Outage::where('sla_breached', false)
@@ -256,24 +292,34 @@ class OutageReportController extends OutagesController
             ->count();
 
         // SLA breakdown by priority
-        $slaBreakdownByPriority = Outage::select('priority')
-            ->selectRaw('COUNT(CASE WHEN sla_breached = 0 THEN 1 END) as within_sla')
-            ->selectRaw('COUNT(CASE WHEN sla_breached = 1 THEN 1 END) as outside_sla')
+        //
+        // The view (reports.sla-breakdown) reads $slaByPriority (not
+        // $slaBreakdownByPriority) and expects ->total/->breached/
+        // ->compliance_rate on each row (not ->within_sla/->outside_sla) —
+        // both the variable name and the column names were mismatched, so
+        // `@if(isset($slaByPriority) ...)` was always false and the table
+        // silently rendered "No data available" regardless of real data.
+        $slaByPriority = Outage::select('priority')
+            ->selectRaw('COUNT(*) as total')
+            ->selectRaw('COUNT(CASE WHEN sla_breached = 1 THEN 1 END) as breached')
+            ->selectRaw('ROUND((COUNT(*) - COUNT(CASE WHEN sla_breached = 1 THEN 1 END)) / COUNT(*) * 100, 2) as compliance_rate')
             ->whereBetween('created_at', [$startDate, $endDate])
             ->groupBy('priority')
             ->get();
 
-        // SLA breakdown by team
-        $slaBreakdownByTeam = Outage::select('team_types.type_name as team_name')
-            ->selectRaw('COUNT(CASE WHEN outages.sla_breached = 0 THEN 1 END) as within_sla')
-            ->selectRaw('COUNT(CASE WHEN outages.sla_breached = 1 THEN 1 END) as outside_sla')
+        // SLA breakdown by team — same name/column mismatch as above
+        // ($slaByTeam, ->total/->breached/->compliance_rate).
+        $slaByTeam = Outage::select('team_types.type_name as team_name')
+            ->selectRaw('COUNT(outages.id) as total')
+            ->selectRaw('COUNT(CASE WHEN outages.sla_breached = 1 THEN 1 END) as breached')
+            ->selectRaw('ROUND((COUNT(outages.id) - COUNT(CASE WHEN outages.sla_breached = 1 THEN 1 END)) / COUNT(outages.id) * 100, 2) as compliance_rate')
             ->leftJoin('team_types', 'outages.assigned_team_id', '=', 'team_types.id')
             ->leftJoin('departments', 'team_types.department_id', '=', 'departments.id')
             ->where('departments.department_name', 'Infrastructure')
             ->whereBetween('outages.created_at', [$startDate, $endDate])
             ->groupBy('team_types.id', 'team_types.type_name')
-            ->having(DB::raw('within_sla + outside_sla'), '>', 0)
-            ->orderBy('outside_sla', 'desc')
+            ->having('total', '>', 0)
+            ->orderBy('compliance_rate', 'asc')
             ->get();
 
         // Monthly SLA trend
@@ -287,7 +333,7 @@ class OutageReportController extends OutagesController
             ->get();
 
         return view($this->view('reports.sla-breakdown'), compact(
-            'withinSLA', 'outsideSLA', 'slaBreakdownByPriority', 'slaBreakdownByTeam',
+            'withinSLA', 'outsideSLA', 'slaByPriority', 'slaByTeam',
             'monthlySLATrend', 'startDate', 'endDate'
         ));
     }
@@ -299,7 +345,12 @@ class OutageReportController extends OutagesController
     {
         $reportType = $request->get('type', 'all');
         $startDate = $request->get('start_date', Carbon::now()->subDays(30)->format('Y-m-d'));
-        $endDate = $request->get('end_date', Carbon::now()->format('Y-m-d'));
+        // Normalized to end-of-day here (not per whereBetween call below) so
+        // every date-range query in this method includes records created
+        // later on the end date — a bare 'Y-m-d' string compares as midnight,
+        // silently excluding same-day records and making "Total" counts read
+        // 0 even when matching rows exist within the selected range.
+        $endDate = Carbon::parse($request->get('end_date', Carbon::now()->format('Y-m-d')))->endOfDay()->format('Y-m-d H:i:s');
 
         // This would integrate with Laravel Excel package
         // For now, return a CSV export simulation
@@ -435,7 +486,9 @@ class OutageReportController extends OutagesController
     public function trends(Request $request)
     {
         $startDate = $request->get('start_date', now()->subMonth()->format('Y-m-d'));
-        $endDate = $request->get('end_date', now()->format('Y-m-d'));
+        // See sla()'s $endDate comment: normalized to end-of-day so same-day
+        // records aren't silently excluded by the whereBetween calls below.
+        $endDate = Carbon::parse($request->get('end_date', now()->format('Y-m-d')))->endOfDay()->format('Y-m-d H:i:s');
         
         // Trend analysis logic here
         $trendsData = [];
@@ -449,7 +502,9 @@ class OutageReportController extends OutagesController
     public function impact(Request $request)
     {
         $startDate = $request->get('start_date', now()->subMonth()->format('Y-m-d'));
-        $endDate = $request->get('end_date', now()->format('Y-m-d'));
+        // See sla()'s $endDate comment: normalized to end-of-day so same-day
+        // records aren't silently excluded by the whereBetween calls below.
+        $endDate = Carbon::parse($request->get('end_date', now()->format('Y-m-d')))->endOfDay()->format('Y-m-d H:i:s');
         
         // Customer impact analysis using merged outages structure
         $impactData = [
@@ -496,8 +551,29 @@ class OutageReportController extends OutagesController
                     ->count()
             ]
         ];
-        
-        return view($this->view('reports.impact'), compact('impactData', 'startDate', 'endDate'));
+
+        // The view (reports.impact) reads $impactMetrics — a flat
+        // high/medium/low array — not $impactData's nested by_impact_level
+        // structure, so it always fell through to the "No Impact Data
+        // Available" branch regardless of how much real data existed.
+        // Derived from the by_impact_level rows already fetched above
+        // rather than re-querying.
+        $totalForPercent = $impactData['by_impact_level']->sum('count');
+        $impactMetrics = [];
+        foreach (['high' => 'High', 'medium' => 'Medium', 'low' => 'Low'] as $key => $label) {
+            $row = $impactData['by_impact_level']->firstWhere('impact', $label);
+            $count = $row->count ?? 0;
+            $avgDuration = $row->avg_duration ?? null;
+            $impactMetrics[$key] = $count;
+            $impactMetrics["{$key}_percent"] = $totalForPercent > 0 ? round(($count / $totalForPercent) * 100) . '%' : '0%';
+            $impactMetrics["{$key}_avg_time"] = $avgDuration ? round($avgDuration, 1) . 'h' : 'N/A';
+            $impactMetrics["{$key}_total_downtime"] = $avgDuration ? round($avgDuration * $count, 1) . 'h' : '0h';
+        }
+        $impactMetrics['avg_downtime'] = $impactData['by_impact_level']->avg('avg_duration')
+            ? round($impactData['by_impact_level']->avg('avg_duration'), 1) . 'h'
+            : '0h';
+
+        return view($this->view('reports.impact'), compact('impactData', 'impactMetrics', 'startDate', 'endDate'));
     }
 
     /**
@@ -506,7 +582,9 @@ class OutageReportController extends OutagesController
     public function rootCause(Request $request)
     {
         $startDate = $request->get('start_date', now()->subMonth()->format('Y-m-d'));
-        $endDate = $request->get('end_date', now()->format('Y-m-d'));
+        // See sla()'s $endDate comment: normalized to end-of-day so same-day
+        // records aren't silently excluded by the whereBetween calls below.
+        $endDate = Carbon::parse($request->get('end_date', now()->format('Y-m-d')))->endOfDay()->format('Y-m-d H:i:s');
         
         // Root cause analysis logic here
         $rootCauseData = [];
@@ -520,7 +598,9 @@ class OutageReportController extends OutagesController
     public function slaExport(Request $request)
     {
         $startDate = $request->get('start_date', now()->subMonth()->format('Y-m-d'));
-        $endDate = $request->get('end_date', now()->format('Y-m-d'));
+        // See sla()'s $endDate comment: normalized to end-of-day so same-day
+        // records aren't silently excluded by the whereBetween calls below.
+        $endDate = Carbon::parse($request->get('end_date', now()->format('Y-m-d')))->endOfDay()->format('Y-m-d H:i:s');
         
         $filename = 'outage_sla_report_' . $startDate . '_to_' . $endDate . '.csv';
         
@@ -547,7 +627,9 @@ class OutageReportController extends OutagesController
     public function productivityExport(Request $request)
     {
         $startDate = $request->get('start_date', now()->subMonth()->format('Y-m-d'));
-        $endDate = $request->get('end_date', now()->format('Y-m-d'));
+        // See sla()'s $endDate comment: normalized to end-of-day so same-day
+        // records aren't silently excluded by the whereBetween calls below.
+        $endDate = Carbon::parse($request->get('end_date', now()->format('Y-m-d')))->endOfDay()->format('Y-m-d H:i:s');
         
         $filename = 'outage_productivity_report_' . $startDate . '_to_' . $endDate . '.csv';
         
@@ -574,7 +656,9 @@ class OutageReportController extends OutagesController
     public function slaBreakdownExport(Request $request)
     {
         $startDate = $request->get('start_date', now()->subMonth()->format('Y-m-d'));
-        $endDate = $request->get('end_date', now()->format('Y-m-d'));
+        // See sla()'s $endDate comment: normalized to end-of-day so same-day
+        // records aren't silently excluded by the whereBetween calls below.
+        $endDate = Carbon::parse($request->get('end_date', now()->format('Y-m-d')))->endOfDay()->format('Y-m-d H:i:s');
         
         $filename = 'outage_sla_breakdown_report_' . $startDate . '_to_' . $endDate . '.csv';
         
@@ -601,7 +685,9 @@ class OutageReportController extends OutagesController
     public function trendsExport(Request $request)
     {
         $startDate = $request->get('start_date', now()->subMonth()->format('Y-m-d'));
-        $endDate = $request->get('end_date', now()->format('Y-m-d'));
+        // See sla()'s $endDate comment: normalized to end-of-day so same-day
+        // records aren't silently excluded by the whereBetween calls below.
+        $endDate = Carbon::parse($request->get('end_date', now()->format('Y-m-d')))->endOfDay()->format('Y-m-d H:i:s');
         
         $filename = 'outage_trends_report_' . $startDate . '_to_' . $endDate . '.csv';
         
@@ -628,7 +714,9 @@ class OutageReportController extends OutagesController
     public function impactExport(Request $request)
     {
         $startDate = $request->get('start_date', now()->subMonth()->format('Y-m-d'));
-        $endDate = $request->get('end_date', now()->format('Y-m-d'));
+        // See sla()'s $endDate comment: normalized to end-of-day so same-day
+        // records aren't silently excluded by the whereBetween calls below.
+        $endDate = Carbon::parse($request->get('end_date', now()->format('Y-m-d')))->endOfDay()->format('Y-m-d H:i:s');
         
         $filename = 'outage_impact_report_' . $startDate . '_to_' . $endDate . '.csv';
         
@@ -655,7 +743,9 @@ class OutageReportController extends OutagesController
     public function rootCauseExport(Request $request)
     {
         $startDate = $request->get('start_date', now()->subMonth()->format('Y-m-d'));
-        $endDate = $request->get('end_date', now()->format('Y-m-d'));
+        // See sla()'s $endDate comment: normalized to end-of-day so same-day
+        // records aren't silently excluded by the whereBetween calls below.
+        $endDate = Carbon::parse($request->get('end_date', now()->format('Y-m-d')))->endOfDay()->format('Y-m-d H:i:s');
         
         $filename = 'outage_root_cause_report_' . $startDate . '_to_' . $endDate . '.csv';
         

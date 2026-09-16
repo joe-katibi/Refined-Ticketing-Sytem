@@ -471,7 +471,7 @@ $configData = Helper::appClasses();
                                 <option value="Scheduled-Closed" {{ old('status', $escalation->status) == 'Scheduled-Closed' ? 'selected' : '' }}>Scheduled-Closed</option>
                                 <option value="Scheduled-Assigned Team" {{ old('status', $escalation->status) == 'Scheduled-Assigned Team' ? 'selected' : '' }}>Scheduled-Assigned Team</option>
                                 <option value="Escalated-NOC" {{ old('status', $escalation->status) == 'Escalated-NOC' ? 'selected' : '' }}>Escalated-NOC</option>
-                                <option value="Escalated-Open " {{ old('status', $escalation->status) == 'Escalated-Open' ? 'selected' : '' }}>Escalated-Open</option>
+                                <option value="Escalated-Open" {{ old('status', $escalation->status) == 'Escalated-Open' ? 'selected' : '' }}>Escalated-Open</option>
                                 <option value="Escalated-Closed" {{ old('status', $escalation->status) == 'Escalated-Closed' ? 'selected' : '' }}>Escalated-Closed</option>
                                 <option value="Escalated-Infrastructure" {{ old('status', $escalation->status) == 'Escalated-Infrastructure' ? 'selected' : '' }}>Escalated-Infrastructure</option>
                                 <option value="Support-Post-Install" {{ old('status', $escalation->status) == 'Support-Post-Install' ? 'selected' : '' }}>Support-Post-Install</option>

@@ -421,7 +421,7 @@ body {
             <i class="fas fa-rocket me-2"></i>Quick Actions
         </div>
         <div class="action-buttons">
-            <a href="/escalations/create" class="action-btn primary">
+            <a href="{{ route('list.create') }}" class="action-btn primary">
                 <i class="fas fa-plus"></i>
                 Create Escalation
             </a>
@@ -456,8 +456,8 @@ body {
                 <div class="module-stat-label">High Priority</div>
             </div>
             <div class="module-stat-card">
-                <div class="module-stat-number text-danger">{{ $escalationsCritical ?? 0 }}</div>
-                <div class="module-stat-label">Critical</div>
+                <div class="module-stat-number text-info">{{ $escalationsThisWeek ?? 0 }}</div>
+                <div class="module-stat-label">Created This Week</div>
             </div>
         </div>
     </div>
@@ -466,20 +466,20 @@ body {
     <div class="module-section">
         <div class="module-header">
             <i class="module-icon fas fa-calendar-check"></i>
-            <h2 class="module-title">Appointments Module</h2>
+            <h2 class="module-title">Site Visits (Appointments) Module</h2>
         </div>
         <div class="module-stats">
             <div class="module-stat-card">
-                <div class="module-stat-number text-info">{{ $appointmentsScheduled ?? 0 }}</div>
-                <div class="module-stat-label">Scheduled</div>
+                <div class="module-stat-number text-info">{{ $appointmentsOpen ?? 0 }}</div>
+                <div class="module-stat-label">Open</div>
             </div>
             <div class="module-stat-card">
                 <div class="module-stat-number text-success">{{ $appointmentsCompleted ?? 0 }}</div>
                 <div class="module-stat-label">Completed</div>
             </div>
             <div class="module-stat-card">
-                <div class="module-stat-number text-warning">{{ $appointmentsPending ?? 0 }}</div>
-                <div class="module-stat-label">Pending</div>
+                <div class="module-stat-number text-warning">{{ $appointmentsThisWeek ?? 0 }}</div>
+                <div class="module-stat-label">Scheduled This Week</div>
             </div>
             <div class="module-stat-card">
                 <div class="module-stat-number text-danger">{{ $appointmentsCancelled ?? 0 }}</div>
@@ -508,17 +508,99 @@ body {
                 <div class="module-stat-label">Critical</div>
             </div>
             <div class="module-stat-card">
-                <div class="module-stat-number text-info">{{ $outagesPlanned ?? 0 }}</div>
-                <div class="module-stat-label">Planned</div>
+                <div class="module-stat-number text-danger">{{ $outagesEmergency ?? 0 }}</div>
+                <div class="module-stat-label">Emergency</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FIFO Queue Module Section -->
+    <div class="module-section">
+        <div class="module-header">
+            <i class="module-icon fas fa-list-ol"></i>
+            <h2 class="module-title">FIFO Dispatch Queues</h2>
+        </div>
+        <div class="module-stats">
+            <div class="module-stat-card">
+                <div class="module-stat-number {{ ($fifoWaiting['escalation'] ?? 0) > 0 ? 'text-warning' : 'text-success' }}">{{ $fifoWaiting['escalation'] ?? 0 }}</div>
+                <div class="module-stat-label">Escalations Waiting</div>
             </div>
             <div class="module-stat-card">
-                <div class="module-stat-number text-primary">{{ $outagesAssignedToUser ?? 0 }}</div>
-                <div class="module-stat-label">My Tasks</div>
+                <div class="module-stat-number {{ ($fifoWaiting['appointment'] ?? 0) > 0 ? 'text-warning' : 'text-success' }}">{{ $fifoWaiting['appointment'] ?? 0 }}</div>
+                <div class="module-stat-label">Appointments Waiting</div>
             </div>
             <div class="module-stat-card">
-                <div class="module-stat-number text-secondary">{{ $outagesTeamAssigned ?? 0 }}</div>
-                <div class="module-stat-label">Team Tasks</div>
+                <div class="module-stat-number {{ ($fifoWaiting['outage'] ?? 0) > 0 ? 'text-warning' : 'text-success' }}">{{ $fifoWaiting['outage'] ?? 0 }}</div>
+                <div class="module-stat-label">Outages Waiting</div>
             </div>
+            <div class="module-stat-card">
+                <div class="module-stat-number text-primary">{{ $fifoOldestWaitMinutes !== null ? $fifoOldestWaitMinutes . 'm' : '—' }}</div>
+                <div class="module-stat-label">Oldest Wait</div>
+            </div>
+        </div>
+        <div class="text-center mt-3">
+            <a href="{{ route('fifo.index', 'escalation') }}" class="action-btn primary d-inline-flex" style="max-width: 260px;">
+                <i class="fas fa-fast-forward"></i> Open Dispatch Console
+            </a>
+        </div>
+    </div>
+
+    <!-- Users Module Section -->
+    <div class="module-section">
+        <div class="module-header">
+            <i class="module-icon fas fa-users"></i>
+            <h2 class="module-title">Users</h2>
+        </div>
+        <div class="module-stats">
+            <div class="module-stat-card">
+                <div class="module-stat-number text-primary">{{ $usersTotal ?? 0 }}</div>
+                <div class="module-stat-label">Total Users</div>
+            </div>
+            <div class="module-stat-card">
+                <div class="module-stat-number text-success">{{ $usersActive ?? 0 }}</div>
+                <div class="module-stat-label">Active</div>
+            </div>
+            <div class="module-stat-card">
+                <div class="module-stat-number text-secondary">{{ $usersInactive ?? 0 }}</div>
+                <div class="module-stat-label">Inactive</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="module-section">
+        <div class="module-header">
+            <i class="module-icon fas fa-clock"></i>
+            <h2 class="module-title">Recent Activity (last 7 days)</h2>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Type</th>
+                        <th>Ticket</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($recentEscalations->concat($recentAppointments)->concat($recentOutages)->sortByDesc('created_at')->take(10) as $item)
+                        <tr>
+                            <td>
+                                @if($item instanceof \Modules\Escalations\App\Models\Escalation) Escalation
+                                @elseif($item instanceof \Modules\Appointment\Models\Appointment) Appointment
+                                @else Outage
+                                @endif
+                            </td>
+                            <td>{{ $item->ticket_id ?? $item->appointment_ticket_id ?? $item->ticket_number ?? '#' . $item->id }}</td>
+                            <td><span class="badge bg-label-secondary">{{ $item->status }}</span></td>
+                            <td>{{ $item->created_at->diffForHumans() }}</td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="4" class="text-center text-muted">No activity in the last 7 days.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
         </div>
     </div>
 

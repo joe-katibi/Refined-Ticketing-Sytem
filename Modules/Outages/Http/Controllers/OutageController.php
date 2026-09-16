@@ -107,7 +107,7 @@ class OutageController extends OutagesController
   {
     $teamTypes = TeamType::where('status', 'Active')->get();
     $teams = Team::where('status', 'Active')->get();
-    $users = User::where('user_status', 'Active')->get();
+    $users = User::where('user_status', 1)->get();
     $priorities = ['Low', 'Medium', 'High', 'Critical'];
     $impacts = ['Low', 'Medium', 'High', 'Critical'];
     $urgencies = ['Low', 'Medium', 'High', 'Critical'];
@@ -158,7 +158,8 @@ class OutageController extends OutagesController
         'resolution_notes' => 'nullable|string',
         'affected_areas' => 'nullable|array',
         'affected_services' => 'nullable|array',
-        'assigned_team' => 'nullable|exists:teams,id',
+        'assigned_team_type' => 'nullable|exists:team_types,id',
+        'assigned_sub_team_type_id' => 'nullable|exists:sub_team_types,id',
         'assigned_to' => 'nullable|exists:users,id',
       ]);
       \Log::info('Validation passed successfully');
@@ -194,7 +195,13 @@ class OutageController extends OutagesController
         'resolution_notes' => $request->resolution_notes,
         'impacted_areas' => $request->affected_areas ?? [],
         'impacted_services' => $request->affected_services ?? [],
-        'assigned_team_id' => $request->assigned_team,
+        // assigned_team_id is a FK to team_types (see Outage::teamType()), not
+        // teams — the form's field is 'assigned_team_type', not 'assigned_team'
+        // (which doesn't exist), and sub_team_type_id was never read at all,
+        // so a freshly created outage always showed "Not assigned" for both
+        // Team Type and Sub Team Type even when the creator selected them.
+        'assigned_team_id' => $request->assigned_team_type,
+        'sub_team_type_id' => $request->assigned_sub_team_type_id,
         'assigned_to' => $request->assigned_to,
         'reported_by' => Auth::id(),
         'created_by' => Auth::id(),
@@ -207,6 +214,14 @@ class OutageController extends OutagesController
         'outage_id' => $outage->id,
         'ticket_number' => $outage->ticket_number,
       ]);
+
+      // The show page reads impacted areas/services from the affectedAreas()/
+      // affectedServices() pivot relationships (as does update()), not from
+      // the impacted_areas/impacted_services JSON columns set above — without
+      // this sync, every newly created outage displayed "Not specified" even
+      // when the creator selected areas/services.
+      $outage->affectedAreas()->sync($request->affected_areas ?? []);
+      $outage->affectedServices()->sync($request->affected_services ?? []);
 
       // Create initial progress entry
       \Log::info('Creating initial progress entry');
@@ -222,6 +237,16 @@ class OutageController extends OutagesController
 
       $progress = OutageProgress::create($progressData);
       \Log::info('Progress created successfully:', ['progress_id' => $progress->id]);
+
+      // FIFO: enter the unassigned queue. Dispatched via FifoQueueController
+      // (Assign Next / Bulk Assign) or the scheduled fifo:dispatch command.
+      (new \App\Services\Fifo\FifoQueueService())->enqueue(
+        'outage',
+        'outage',
+        $outage->id,
+        $outage->priority,
+        $outage->region_id
+      );
 
       DB::commit();
       \Log::info('Database transaction committed successfully');
@@ -279,7 +304,7 @@ class OutageController extends OutagesController
 
     $teamTypes = TeamType::where('status', 'Active')->get();
     $teams = Team::where('status', 'Active')->get();
-    $users = User::where('user_status', 'Active')->get();
+    $users = User::where('user_status', 1)->get();
     $priorities = ['Low', 'Medium', 'High', 'Critical'];
     $impacts = ['Low', 'Medium', 'High', 'Critical'];
     $urgencies = ['Low', 'Medium', 'High', 'Critical'];
@@ -709,8 +734,12 @@ class OutageController extends OutagesController
   public function getUsersBySubTeamType($subTeamTypeId)
   {
     try {
+      // user_status is stored as 1/0, not the string 'Active' (see
+      // HomeController, Admin\UserController) — this always matched zero
+      // rows, so the "Assigned To" dropdown was permanently empty for every
+      // sub-team-type regardless of how many technicians were configured.
       $users = User::where('sub_team_type_id', $subTeamTypeId)
-        ->where('user_status', 'Active')
+        ->where('user_status', 1)
         ->orderBy('name')
         ->get(['id', 'name', 'email']);
 
@@ -842,7 +871,14 @@ class OutageController extends OutagesController
           $q->orWhere('assigned_team_id', $userTeamId);
         }
       })
-      ->whereNotIn('status', ['infra-resolved', 'noc-restore-confirmed'])
+      // Was excluding 'noc-restore-confirmed' alongside 'infra-resolved',
+      // but that isn't a terminal state — Outage::isResolved()/scopeResolved()
+      // only treat infra-resolved and support-closed as "done". Hiding
+      // noc-restore-confirmed here meant the moment a NOC tech confirmed
+      // restoration, the ticket vanished from every My Outages queue
+      // (including their own) with no way to reach the real final step,
+      // Support Closed, through this view at all.
+      ->whereNotIn('status', ['infra-resolved', 'support-closed'])
       ->orderBy('created_at', 'desc');
 
     // Apply filters
@@ -901,8 +937,12 @@ class OutageController extends OutagesController
       abort(403, 'You do not have permission to edit this outage.');
     }
 
-    // Check if outage status allows editing (block resolved/completed statuses)
-    if (in_array($outage->status, ['infra-resolved', 'noc-restore-confirmed'])) {
+    // Check if outage status allows editing (block resolved/completed statuses).
+    // Same fix as myOutages() above: noc-restore-confirmed isn't a terminal
+    // state per Outage::isResolved()/scopeResolved() — blocking edits here
+    // meant a NOC tech who confirmed restoration could never then move the
+    // ticket on to the real final state, support-closed.
+    if (in_array($outage->status, ['infra-resolved', 'support-closed'])) {
       abort(403, 'This outage has been resolved and can no longer be edited.');
     }
 

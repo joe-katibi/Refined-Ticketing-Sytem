@@ -98,7 +98,7 @@ class OutageApiController extends Controller
   {
     try {
       $users = User::where('sub_team_type_id', $subTeamTypeId)
-        ->where('user_status', 'Active')
+        ->where('user_status', 1)
         ->orderBy('name')
         ->get(['id', 'name', 'email'])
         ->map(function ($user) {

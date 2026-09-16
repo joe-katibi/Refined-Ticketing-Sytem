@@ -30,6 +30,18 @@ class Team extends Model
     }
 
     /**
+     * Several views (appointment/edit, appointment/show,
+     * site-visit/{noc,design,infrastructure}/new) read `->name` on this
+     * model, but the only real column is `team_name` — every one of those
+     * always rendered the null-coalesce fallback ("Unknown Team"/"N/A"/"Not
+     * Assigned") regardless of whether a team was actually assigned.
+     */
+    public function getNameAttribute(): ?string
+    {
+        return $this->team_name;
+    }
+
+    /**
      * Get the partner that owns the team.
      */
     public function partner(): BelongsTo

@@ -72,7 +72,10 @@ class AffectedAreaSeeder extends Seeder
         ];
 
         foreach ($affectedAreas as $area) {
-            AffectedArea::create($area);
+            AffectedArea::firstOrCreate(
+                ['area_name' => $area['area_name']],
+                $area
+            );
         }
 
         Model::reguard();

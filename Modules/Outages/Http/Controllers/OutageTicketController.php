@@ -69,7 +69,7 @@ class OutageTicketController extends OutagesController
         
         $outages = Outage::where('status', '!=', 'Closed')->get();
         $teams = Team::where('status', 'Active')->get();
-        $users = User::where('user_status', 'Active')->get();
+        $users = User::where('user_status', 1)->get();
         $priorities = ['Low', 'Medium', 'High', 'Critical'];
         $impacts = ['Low', 'Medium', 'High', 'Critical'];
         $urgencies = ['Low', 'Medium', 'High', 'Critical'];
@@ -146,7 +146,7 @@ class OutageTicketController extends OutagesController
         ]);
 
         $teams = Team::where('status', 'Active')->get();
-        $users = User::where('user_status', 'Active')->get();
+        $users = User::where('user_status', 1)->get();
 
         return view($this->view('tickets.show'), compact('outageTicket', 'teams', 'users'));
     }
@@ -158,7 +158,7 @@ class OutageTicketController extends OutagesController
     {
         $outages = Outage::where('status', '!=', 'Closed')->get();
         $teams = Team::where('status', 'Active')->get();
-        $users = User::where('user_status', 'Active')->get();
+        $users = User::where('user_status', 1)->get();
         $priorities = ['Low', 'Medium', 'High', 'Critical'];
         $impacts = ['Low', 'Medium', 'High', 'Critical'];
         $urgencies = ['Low', 'Medium', 'High', 'Critical'];

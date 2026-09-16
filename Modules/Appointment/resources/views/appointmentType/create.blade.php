@@ -39,6 +39,22 @@ $configData = Helper::appClasses();
                             </div>
                             <div class="col-md-6">
                                 <div class="form-group">
+                                    <label for="code_prefix">Ticket Prefix <span class="text-danger">*</span></label>
+                                    <input type="text" name="code_prefix" id="code_prefix"
+                                           class="form-control @error('code_prefix') is-invalid @enderror"
+                                           value="{{ old('code_prefix') }}"
+                                           maxlength="10" placeholder="e.g. INS, WiE, SUP, SHI"
+                                           style="text-transform:uppercase" required>
+                                    <small class="form-text text-muted">Used to number tickets for this type, e.g. SUP-1, SUP-2.</small>
+                                    @error('code_prefix')
+                                        <span class="invalid-feedback" role="alert">
+                                            <strong>{{ $message }}</strong>
+                                        </span>
+                                    @enderror
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
                                     <label for="type_status">Status <span class="text-danger">*</span></label>
                                     <select name="type_status" id="type_status"
                                             class="form-control @error('type_status') is-invalid @enderror"

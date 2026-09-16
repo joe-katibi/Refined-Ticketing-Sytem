@@ -28,7 +28,10 @@ class ReportsController extends Controller
     public function slaReport(Request $request)
     {
         $dateFrom = $request->get('date_from', now()->startOfMonth()->format('Y-m-d'));
-        $dateTo = $request->get('date_to', now()->format('Y-m-d'));
+        // Normalized to end-of-day so a same-day record (created after
+        // midnight on date_to) isn't silently excluded by whereBetween below
+        // — a bare 'Y-m-d' string compares as midnight, not end of day.
+        $dateTo = Carbon::parse($request->get('date_to', now()->format('Y-m-d')))->endOfDay()->format('Y-m-d H:i:s');
 
         // Overall SLA metrics
         $totalEscalations = Escalation::whereBetween('created_at', [$dateFrom, $dateTo])->count();
@@ -84,7 +87,10 @@ class ReportsController extends Controller
     public function productivityReport(Request $request)
     {
         $dateFrom = $request->get('date_from', now()->startOfMonth()->format('Y-m-d'));
-        $dateTo = $request->get('date_to', now()->format('Y-m-d'));
+        // Normalized to end-of-day so a same-day record (created after
+        // midnight on date_to) isn't silently excluded by whereBetween below
+        // — a bare 'Y-m-d' string compares as midnight, not end of day.
+        $dateTo = Carbon::parse($request->get('date_to', now()->format('Y-m-d')))->endOfDay()->format('Y-m-d H:i:s');
 
         // Get user productivity metrics
         $userMetrics = DB::table('escalations')
@@ -124,7 +130,10 @@ class ReportsController extends Controller
     public function subCategoryReport(Request $request)
     {
         $dateFrom = $request->get('date_from', now()->startOfMonth()->format('Y-m-d'));
-        $dateTo = $request->get('date_to', now()->format('Y-m-d'));
+        // Normalized to end-of-day so a same-day record (created after
+        // midnight on date_to) isn't silently excluded by whereBetween below
+        // — a bare 'Y-m-d' string compares as midnight, not end of day.
+        $dateTo = Carbon::parse($request->get('date_to', now()->format('Y-m-d')))->endOfDay()->format('Y-m-d H:i:s');
 
         // Get escalated items by sub category
         $subCategoryMetrics = DB::table('escalations')

@@ -93,16 +93,21 @@ $configData = Helper::appClasses();
                                                                 </td>
                                                                 <td>
                                                                     <div class="action-buttons">
-                                                                        @can('view-view-escalation')
-                                                                        <a href="{{ route('escalations.show', $list->id) }}" class="btn btn-icon btn-info btn-sm" data-bs-toggle="tooltip" data-bs-placement="top" title="View">
-                                                                            <i class="fas fa-eye"></i>
-                                                                        </a>
-                                                                        @endcan
-                                                                        @can('view-edit-escalation')
-                                                                        <a href="{{ route('escalations.edit', $list->id) }}" class="btn btn-icon btn-primary btn-sm" data-bs-toggle="tooltip" data-bs-placement="top" title="Edit">
-                                                                            <i class="fas fa-edit"></i>
-                                                                        </a>
-                                                                        @endcan
+                                                                        @php $nativeId = $nativeEscalationIdMap[$list->id] ?? null; @endphp
+                                                                        @if($nativeId)
+                                                                            @can('view-view-escalation')
+                                                                            <a href="{{ route('escalations.show', $nativeId) }}" class="btn btn-icon btn-info btn-sm" data-bs-toggle="tooltip" data-bs-placement="top" title="View">
+                                                                                <i class="fas fa-eye"></i>
+                                                                            </a>
+                                                                            @endcan
+                                                                            @can('view-edit-escalation')
+                                                                            <a href="{{ route('escalations.edit', $nativeId) }}" class="btn btn-icon btn-primary btn-sm" data-bs-toggle="tooltip" data-bs-placement="top" title="Edit">
+                                                                                <i class="fas fa-edit"></i>
+                                                                            </a>
+                                                                            @endcan
+                                                                        @else
+                                                                            <span class="badge badge-xs bg-label-secondary" data-bs-toggle="tooltip" title="No linked escalation record">Unlinked</span>
+                                                                        @endif
                                                                     </div>
                                                                 </td>
                                                             </tr>
@@ -153,16 +158,21 @@ $configData = Helper::appClasses();
                                                             <div class="mobile-card-label">Actions</div>
                                                             <div class="mobile-card-value">
                                                                 <div class="btn-group-responsive">
-                                                                    @can('view-view-escalation')
-                                                                    <a href="{{ route('escalations.show', $list->id) }}" class="btn btn-outline-info btn-sm">
-                                                                        <i class="bx bx-show me-1"></i> View
-                                                                    </a>
-                                                                    @endcan
-                                                                    @can('view-edit-escalation')
-                                                                    <a href="{{ route('escalations.edit', $list->id) }}" class="btn btn-outline-primary btn-sm">
-                                                                        <i class="bx bx-edit me-1"></i> Edit
-                                                                    </a>
-                                                                    @endcan
+                                                                    @php $nativeId = $nativeEscalationIdMap[$list->id] ?? null; @endphp
+                                                                    @if($nativeId)
+                                                                        @can('view-view-escalation')
+                                                                        <a href="{{ route('escalations.show', $nativeId) }}" class="btn btn-outline-info btn-sm">
+                                                                            <i class="bx bx-show me-1"></i> View
+                                                                        </a>
+                                                                        @endcan
+                                                                        @can('view-edit-escalation')
+                                                                        <a href="{{ route('escalations.edit', $nativeId) }}" class="btn btn-outline-primary btn-sm">
+                                                                            <i class="bx bx-edit me-1"></i> Edit
+                                                                        </a>
+                                                                        @endcan
+                                                                    @else
+                                                                        <span class="badge bg-secondary">Unlinked</span>
+                                                                    @endif
                                                                 </div>
                                                             </div>
                                                         </div>

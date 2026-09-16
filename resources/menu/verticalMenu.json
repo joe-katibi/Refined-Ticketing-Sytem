@@ -64,6 +64,12 @@
           "permission": "view-escalate-menu"
         },
         {
+          "name": "FIFO Queue",
+          "url": "/fifo/escalation",
+          "slug": "fifo.index",
+          "permission": "view-escalation-menu"
+        },
+        {
           "name": "Escalations",
           "url": "/escalation",
           "slug": "escalations.index",
@@ -124,6 +130,12 @@
           "url": "/appointments/assigned",
           "slug": "appointment.appointments.assigned",
           "permission": "view-assigned-appointments-menu"
+        },
+        {
+          "name": "FIFO Queue",
+          "url": "/fifo/appointment",
+          "slug": "fifo.index",
+          "permission": "view-appointment-menu"
         },
         {
           "name": "My Appointments",
@@ -246,6 +258,12 @@
           "url": "/assigned-outages",
           "slug": "outages.assigned",
           "permission": "view-assigned-outage-menu"
+        },
+        {
+          "name": "FIFO Queue",
+          "url": "/fifo/outage",
+          "slug": "fifo.index",
+          "permission": "view-outage-menu"
         },
         {
           "name": "My Outages",

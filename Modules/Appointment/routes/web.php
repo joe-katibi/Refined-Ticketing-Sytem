@@ -48,12 +48,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
       Route::get('/my-appointments', [AppointmentController::class, 'myAppointments'])
         ->name('my_appointments')
         ->middleware('permission:view-my-appointments-menu');
+      // RolesSeeder grants dispatchers/admins 'view-appointment-edit' and
+      // grants Field-Technician a distinct 'view-my-appointment-edit' for
+      // this exact page — gating on only the first permission meant a
+      // technician saw the "Edit" link on their own My Appointments page
+      // but got a 403 the moment they clicked it, with no way to progress
+      // or close a ticket assigned to them.
       Route::get('/assigned/{appointment}/edit', [AppointmentController::class, 'editAssigned'])
         ->name('edit_assigned')
-        ->middleware('permission:view-appointment-edit');
+        ->middleware('permission:view-appointment-edit|view-my-appointment-edit');
       Route::put('/assigned/{appointment}', [AppointmentController::class, 'updateAssigned'])
         ->name('update_assigned')
-        ->middleware('permission:view-appointment-edit');
+        ->middleware('permission:view-appointment-edit|view-my-appointment-edit');
       Route::get('/create', [AppointmentController::class, 'create'])
         ->name('create')
         ->middleware('permission:view-appointment-create');
@@ -63,6 +69,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
       // AJAX Routes for getting sub-types
       Route::get('/get-sub-types/{type_id}', [AppointmentController::class, 'getSubTypes'])->name('get-sub-types');
+
+      // AJAX route for the "Assigned To" cascade on the edit form
+      Route::get('/sub-team-types/{subTeamType}/users', [AppointmentController::class, 'getUsersBySubTeamType'])->name('sub-team-types.users');
 
       // AJAX Routes for getting slots by OLT
       Route::get('/get-slots/{olt_id}', [AppointmentController::class, 'getSlots'])->name('get-slots');

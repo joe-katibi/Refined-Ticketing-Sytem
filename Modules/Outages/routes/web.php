@@ -44,8 +44,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Assigned Outages and My Outages
     Route::get('assigned-outages', [OutageController::class, 'assignedOutages'])->name('outages.assigned')->middleware('permission:view-assigned-outage-menu');
     Route::get('my-outages', [OutageController::class, 'myOutages'])->name('outages.my-outages')->middleware('permission:view-my-outage-menu');
-    Route::get('my-outages/{outage}/edit', [OutageController::class, 'editMyOutage'])->name('outages.my-outages.edit')->middleware('permission:view-edit-outage');
-    Route::put('my-outages/{outage}', [OutageController::class, 'updateMyOutage'])->name('outages.my-outages.update')->middleware('permission:view-edit-outage');
+    // RolesSeeder grants Field-Technician 'view-assigned-my-outage-edit'
+    // for this exact page (distinct from the admin 'view-edit-outage') —
+    // gating on only 'view-edit-outage' 403'd every technician who clicked
+    // Edit on their own My Outages list. See the identical fix for
+    // Modules\Appointment\routes\web.php's edit_assigned/update_assigned.
+    Route::get('my-outages/{outage}/edit', [OutageController::class, 'editMyOutage'])->name('outages.my-outages.edit')->middleware('permission:view-edit-outage|view-assigned-my-outage-edit');
+    Route::put('my-outages/{outage}', [OutageController::class, 'updateMyOutage'])->name('outages.my-outages.update')->middleware('permission:view-edit-outage|view-assigned-my-outage-edit');
 
     // Outage Tickets
     Route::resource('outage-tickets', OutageTicketController::class)->middleware('permission:view-outage-menu');

@@ -9,6 +9,17 @@ use Modules\Appointment\Models\AppointmentHistory;
 use App\Models\TicketPhoto;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * Every method here previously filtered on
+ * `Appointment::where('assigned_team_id', $user->team_type_id)` —
+ * comparing appointments.assigned_team_id (an FK to `teams`) against
+ * $user->team_type_id (an FK to the unrelated `team_types` table). That
+ * condition can only be true by numeric coincidence, so a field technician's
+ * "My Appointments" list, appointment detail, update, history, and photo
+ * endpoints were all effectively broken — real assigned work would not
+ * appear, or the wrong appointment could match. Switched to the per-user
+ * `assigned_to` column (added for the FIFO engine) throughout.
+ */
 class MobileAppointmentController extends Controller
 {
     /**
@@ -25,7 +36,7 @@ class MobileAppointmentController extends Controller
             ]);
 
             // Simplified query without relationships to avoid timeout
-            $appointments = Appointment::where('assigned_team_id', $user->team_type_id)
+            $appointments = Appointment::where('assigned_to', $user->id)
                 ->orderBy('scheduled_date', 'desc')
                 ->paginate(20);
 
@@ -186,7 +197,7 @@ class MobileAppointmentController extends Controller
         $user = $request->user();
 
         $appointment = Appointment::with(['teamType', 'subTeamType', 'appointmentStatus', 'photos'])
-            ->where('assigned_team_id', $user->team_type_id)
+            ->where('assigned_to', $user->id)
             ->findOrFail($id);
 
         return response()->json([
@@ -201,33 +212,44 @@ class MobileAppointmentController extends Controller
     {
         $user = $request->user();
 
-        $appointment = Appointment::where('assigned_team_id', $user->team_type_id)
+        $appointment = Appointment::where('assigned_to', $user->id)
             ->findOrFail($id);
 
+        // Was validating/writing 'notes', 'completion_notes', 'rescheduled_date',
+        // 'rescheduled_time' — none of these are real columns on appointments
+        // (fillable has notes_created/notes_closed/scheduled_date/scheduled_time
+        // instead), so $appointment->update() silently dropped all of them:
+        // a technician's saved notes or reschedule never actually persisted,
+        // with no error surfaced anywhere.
         $request->validate([
             'status' => 'nullable|string',
-            'notes' => 'nullable|string',
-            'completion_notes' => 'nullable|string',
-            'rescheduled_date' => 'nullable|date',
-            'rescheduled_time' => 'nullable|date_format:H:i',
+            'notes_created' => 'nullable|string',
+            'notes_closed' => 'nullable|string',
+            'scheduled_date' => 'nullable|date',
+            'scheduled_time' => 'nullable',
         ]);
 
-        $oldData = $appointment->toArray();
+        $previousStatus = $appointment->status;
 
         // Update appointment
         $appointment->update($request->only([
-            'status', 'notes', 'completion_notes',
-            'rescheduled_date', 'rescheduled_time'
+            'status', 'notes_created', 'notes_closed',
+            'scheduled_date', 'scheduled_time'
         ]));
 
-        // Create history record
+        // Create history record. Was writing 'user_id', 'action', 'old_values',
+        // 'new_values', 'notes' — none of which are fillable on this model (see
+        // AppointmentHistory::$fillable), so mass-assignment silently dropped
+        // all of them, leaving only appointment_id — and since 'status' (which
+        // IS fillable, and NOT NULL with no DB default) was never included
+        // either, every update() call failed with a SQL error, on top of never
+        // actually recording anything useful.
         AppointmentHistory::create([
             'appointment_id' => $appointment->id,
-            'user_id' => $user->id,
-            'action' => 'updated',
-            'old_values' => json_encode($oldData),
-            'new_values' => json_encode($appointment->fresh()->toArray()),
-            'notes' => $request->notes,
+            'status' => $appointment->status ?? $previousStatus,
+            'action_by' => $user->id,
+            'action_description' => 'Updated via mobile app (was: ' . $previousStatus . ')',
+            'internal_notes' => $request->input('notes_created'),
         ]);
 
         return response()->json([
@@ -243,7 +265,7 @@ class MobileAppointmentController extends Controller
     {
         $user = $request->user();
 
-        $appointment = Appointment::where('assigned_team_id', $user->team_type_id)
+        $appointment = Appointment::where('assigned_to', $user->id)
             ->findOrFail($id);
 
         $history = AppointmentHistory::with('user')
@@ -263,7 +285,7 @@ class MobileAppointmentController extends Controller
     {
         $user = $request->user();
 
-        $appointment = Appointment::where('assigned_team_id', $user->team_type_id)
+        $appointment = Appointment::where('assigned_to', $user->id)
             ->findOrFail($id);
 
         $request->validate([
@@ -297,7 +319,7 @@ class MobileAppointmentController extends Controller
     {
         $user = $request->user();
 
-        $appointment = Appointment::where('assigned_team_id', $user->team_type_id)
+        $appointment = Appointment::where('assigned_to', $user->id)
             ->findOrFail($id);
 
         $photos = TicketPhoto::with('uploader')
@@ -318,11 +340,18 @@ class MobileAppointmentController extends Controller
     {
         $user = $request->user();
 
-        $totalAppointments = Appointment::where('assigned_team_id', $user->team_type_id)->count();
-        $completedAppointments = Appointment::where('assigned_team_id', $user->team_type_id)
+        // Was comparing appointments.assigned_team_id (an FK to teams) against
+        // $user->team_type_id (an FK to the unrelated team_types table) — this
+        // condition could only match by numeric coincidence, so totals were
+        // effectively always 0. Also compared against status 'pending', which
+        // doesn't exist in this app's real status vocabulary (scheduled-open,
+        // in-progress, completed, cancelled, ...). Switched to the per-user
+        // assigned_to column, which is what "my performance" should mean anyway.
+        $totalAppointments = Appointment::where('assigned_to', $user->id)->count();
+        $completedAppointments = Appointment::where('assigned_to', $user->id)
             ->where('status', 'completed')->count();
-        $pendingAppointments = Appointment::where('assigned_team_id', $user->team_type_id)
-            ->where('status', 'pending')->count();
+        $pendingAppointments = Appointment::where('assigned_to', $user->id)
+            ->whereIn('status', ['scheduled-open', 'scheduled-assigned-team', 'in-progress'])->count();
 
         $completionRate = $totalAppointments > 0 ?
             round(($completedAppointments / $totalAppointments) * 100, 2) : 0;

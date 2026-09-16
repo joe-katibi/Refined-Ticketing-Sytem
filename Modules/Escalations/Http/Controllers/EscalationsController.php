@@ -62,7 +62,19 @@ class EscalationsController extends OptimizedController
       $listsBySubDepartment[$subDepartment->id] = $escalationLists->where('sub_department_id', $subDepartment->id);
     }
 
-    return view('escalations::escalation.index', compact('subDepartments', 'listsBySubDepartment', 'escalationLists'));
+    // The view/edit/assign/history workflow below operates on the native
+    // `escalations` table (Modules\Escalations\App\Models\Escalation), a
+    // separate table from `escalation_lists` with its own auto-increment ID.
+    // ListController::store() links the two via escalations.escalation_id
+    // (a FK to escalation_lists.id) — the view must resolve through that FK
+    // rather than assuming $list->id is also the native record's ID, or it
+    // opens/acts on an unrelated escalation that happens to share that ID.
+    $nativeEscalationIdMap = \Modules\Escalations\App\Models\Escalation::whereIn(
+        'escalation_id',
+        $escalationLists->pluck('id')
+    )->pluck('id', 'escalation_id');
+
+    return view('escalations::escalation.index', compact('subDepartments', 'listsBySubDepartment', 'escalationLists', 'nativeEscalationIdMap'));
   }
 
   // Deactivate (soft inactivate)
@@ -278,8 +290,13 @@ class EscalationsController extends OptimizedController
         'category_id' => 'nullable|integer',
         'sub_category_id' => 'nullable|integer',
         'sub_department_id' => 'nullable|integer',
+        // Widened to match every option actually offered by the Status
+        // dropdown in escalation/edit.blade.php — Scheduled-Assigned Team,
+        // Escalated-NOC, Escalated-Infrastructure, and Support-Post-Install
+        // were all selectable there but absent here, so picking any of them
+        // always failed this validation rule with no visible reason.
         'status' =>
-        'required|in:Scheduled-Open,Scheduled-Closed,Escalated-Open,Escalated-Closed,In-Progress,Cancelled,Rescheduled',
+        'required|in:Scheduled-Open,Scheduled-Closed,Scheduled-Assigned Team,Escalated-NOC,Escalated-Open,Escalated-Closed,Escalated-Infrastructure,Support-Post-Install,In-Progress,Cancelled,Rescheduled',
         'escalation_type' => 'required|in:no_appointment,appointment',
       ]);
 
@@ -298,10 +315,17 @@ class EscalationsController extends OptimizedController
         ]);
       }
 
-      // Create database notification for the editor
+      // createNotification()'s 2nd arg is a FK into the *native* `escalations`
+      // table (EscalationNotification::escalation() -> Escalation, table
+      // `escalations`) — but $escalationList->id is the PK of the unrelated
+      // `escalation_lists` table. Passing it here meant every "edited
+      // ticket" notification linked to whatever row happened to share that
+      // numeric id in `escalations`, showing the wrong ticket entirely
+      // (the same ID-space collision fixed earlier for the index page's
+      // View/Edit links — this is the same bug in the notification calls).
       $this->notificationService->createNotification(
           auth()->id(),
-          $escalationList->id,
+          $escalation->id,
           'You just edited ticket ' . $escalationList->ticket_id,
           'info'
       );
@@ -310,7 +334,7 @@ class EscalationsController extends OptimizedController
       if ($escalationList->created_by && $escalationList->created_by != auth()->id()) {
           $this->notificationService->createNotification(
               $escalationList->created_by,
-              $escalationList->id,
+              $escalation->id,
               auth()->user()->name . ' just edited ticket ' . $escalationList->ticket_id,
               'info'
           );
@@ -320,7 +344,7 @@ class EscalationsController extends OptimizedController
       if ($escalationList->assigned_to && $escalationList->assigned_to != auth()->id() && $escalationList->assigned_to != $escalationList->created_by) {
           $this->notificationService->createNotification(
               $escalationList->assigned_to,
-              $escalationList->id,
+              $escalation->id,
               auth()->user()->name . ' just edited ticket ' . $escalationList->ticket_id,
               'info'
           );
@@ -357,8 +381,11 @@ class EscalationsController extends OptimizedController
         'priority' => 'required|in:low,medium,high',
         'category_id' => 'nullable|integer',
         'sub_category_id' => 'nullable|integer',
+        // See the no_appointment branch's identical comment above — widened
+        // to match every option actually offered by the shared Status
+        // dropdown.
         'status' =>
-          'required|in:Scheduled-Open,Scheduled-Closed,Escalated-Open,Escalated-Closed,In-Progress,Cancelled,Resolved',
+          'required|in:Scheduled-Open,Scheduled-Closed,Scheduled-Assigned Team,Escalated-NOC,Escalated-Open,Escalated-Closed,Escalated-Infrastructure,Support-Post-Install,In-Progress,Cancelled,Resolved',
         'appointment_id' => 'nullable|integer',
         'appointment_type_id' => [
           'nullable',
@@ -384,10 +411,17 @@ class EscalationsController extends OptimizedController
         'edited_by' => auth()->id(),
       ]);
 
-      // Create database notification for the editor
+      // createNotification()'s 2nd arg is a FK into the *native* `escalations`
+      // table (EscalationNotification::escalation() -> Escalation, table
+      // `escalations`) — but $escalationList->id is the PK of the unrelated
+      // `escalation_lists` table. Passing it here meant every "edited
+      // ticket" notification linked to whatever row happened to share that
+      // numeric id in `escalations`, showing the wrong ticket entirely
+      // (the same ID-space collision fixed earlier for the index page's
+      // View/Edit links — this is the same bug in the notification calls).
       $this->notificationService->createNotification(
           auth()->id(),
-          $escalationList->id,
+          $escalation->id,
           'You just edited ticket ' . $escalationList->ticket_id,
           'info'
       );
@@ -396,7 +430,7 @@ class EscalationsController extends OptimizedController
       if ($escalationList->created_by && $escalationList->created_by != auth()->id()) {
           $this->notificationService->createNotification(
               $escalationList->created_by,
-              $escalationList->id,
+              $escalation->id,
               auth()->user()->name . ' just edited ticket ' . $escalationList->ticket_id,
               'info'
           );
@@ -406,7 +440,7 @@ class EscalationsController extends OptimizedController
       if ($escalationList->assigned_to && $escalationList->assigned_to != auth()->id() && $escalationList->assigned_to != $escalationList->created_by) {
           $this->notificationService->createNotification(
               $escalationList->assigned_to,
-              $escalationList->id,
+              $escalation->id,
               auth()->user()->name . ' just edited ticket ' . $escalationList->ticket_id,
               'info'
           );
@@ -591,6 +625,17 @@ class EscalationsController extends OptimizedController
     }
 
       // Determine which appointment type is being used and set the appropriate fields
+      //
+      // status must NOT be $request->status: that field holds an escalation
+      // status (Escalated-Open, Scheduled-Closed, ...) but the appointments
+      // table uses its own, unrelated vocabulary (scheduled-open,
+      // support-post-install, ...) — see AppointmentController::store(). A
+      // new site-visit appointment created here with an escalation status
+      // string matched none of the Appointment module's status filters, so
+      // it silently never appeared on the Appointment List, Assigned
+      // Appointments, or My Appointments pages, or in the mobile app.
+      $defaultAppointmentStatus = \Modules\Appointment\Models\AppointmentStatus::where('name', 'scheduled-open')->first();
+
       $appointmentData = [
           'account_number' => $request->account_number,
           'appointment_ticket_id' => $appointmentTicketId,
@@ -602,7 +647,7 @@ class EscalationsController extends OptimizedController
           'category_id' => $request->category_id,
           'sub_category_id' => $request->sub_category_id,
           'sub_department_id' => $request->sub_department_id,
-          'status' => $request->status,
+          'status' => $defaultAppointmentStatus ? $defaultAppointmentStatus->name : 'scheduled-open',
           'olt_id' => $request->olt_id,
           'slot_id' => $request->slot_id,
           'created_by' => auth()->id(),

@@ -46,6 +46,7 @@ class Escalation extends Model
         'closed_by',
         'olt_id',
         'slot_id',
+        'region_id',
         'support_date',
         'support_time',
         'support_address',

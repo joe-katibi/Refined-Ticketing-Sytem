@@ -81,6 +81,14 @@ class SubDepartmentSeeder extends Seeder
       ];
     }
 
-    DB::table('sub_departments')->insert($subDepartments);
+    foreach ($subDepartments as $subDepartment) {
+      DB::table('sub_departments')->updateOrInsert(
+        [
+          'sub_department_name' => $subDepartment['sub_department_name'],
+          'department_id' => $subDepartment['department_id'],
+        ],
+        $subDepartment
+      );
+    }
   }
 }

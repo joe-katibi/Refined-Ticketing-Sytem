@@ -288,88 +288,75 @@ class AppointmentController extends OptimizedController
     // Get the appointment type
     $appointmentType = AppointmentType::findOrFail($validated['appointment_id']);
 
-    // Generate prefix from type name (first 3 characters, uppercase)
-    $prefix = strtoupper(substr(preg_replace('/[^a-zA-Z]/', '', $appointmentType->type_name), 0, 3));
-
-    // If prefix is empty, use default 'TKT'
+    // Ticket prefix comes from the type's configured code_prefix (set via
+    // Appointment Types settings). Falls back to a derived prefix only for
+    // legacy types saved before that field existed.
+    $prefix = $appointmentType->code_prefix
+      ?: strtoupper(substr(preg_replace('/[^a-zA-Z]/', '', $appointmentType->type_name), 0, 3));
     if (empty($prefix)) {
       $prefix = 'TKT';
     }
 
-    // Get the next ticket number for this prefix
-    $lastTicket = Appointment::where('appointment_ticket_id', 'LIKE', $prefix . '-%')
-      ->orderBy('id', 'desc')
-      ->first();
-
-    $ticketNumber = 1;
-    if (
-      $lastTicket &&
-      preg_match('/' . preg_quote($prefix) . '-(\d+)$/', $lastTicket->appointment_ticket_id, $matches)
-    ) {
-      $ticketNumber = (int) $matches[1] + 1;
-    }
-
-    $validated['appointment_ticket_id'] = $prefix . '-' . $ticketNumber;
+    $validated['created_by'] = auth()->id();
+    $validated['edited_by'] = auth()->id();
 
     // Get default status (Scheduled-Open) or use the one from the form
     $defaultStatus = AppointmentStatus::where('name', 'scheduled-open')->first();
     $validated['status'] = $defaultStatus ? $defaultStatus->name : $validated['status'] ?? 'scheduled-open';
 
-    $validated['created_by'] = auth()->id();
-    $validated['edited_by'] = auth()->id();
+    // Ticket numbering and creation happen in a single transaction:
+    // - SequenceNumberService::next() takes a row lock per prefix so two
+    //   concurrent requests cannot receive the same ticket number.
+    // - Wrapping the appointment + status history + history log writes together
+    //   means a failure partway through rolls back the whole thing instead of
+    //   leaving an orphaned appointment with no status history (as happened
+    //   before this fix, e.g. ticket SUP-1).
+    $appointment = DB::transaction(function () use ($validated, $prefix, $appointmentType) {
+      $ticketNumber = \App\Services\SequenceNumberService::next('appointment:' . $prefix);
+      $validated['appointment_ticket_id'] = $prefix . '-' . $ticketNumber;
 
-    // Log after prefix generation
-    \Illuminate\Support\Facades\Log::info('AppointmentController@store: Prefix generated', [
-      'prefix' => $prefix,
-      'ticket_number' => $ticketNumber,
-      'appointment_ticket_id' => $validated['appointment_ticket_id'],
-    ]);
+      $appointment = Appointment::create($validated);
 
-    $appointment = Appointment::create($validated);
+      AppointmentStatusHistory::create([
+        'appointment_id' => $appointment->id,
+        'previous_status' => null,
+        'new_status' => $appointment->status,
+        'notes' => 'Initial status set during appointment creation',
+        'changed_by' => auth()->id(),
+      ]);
 
-    // Log after successful save
+      if (class_exists('\Modules\Appointment\Models\AppointmentHistory')) {
+        \Modules\Appointment\Models\AppointmentHistory::create([
+          'appointment_id' => $appointment->id,
+          'action' => 'created',
+          'ticket_id' => $appointment->appointment_ticket_id,
+          'action_by' => auth()->id(),
+          'status' => $appointment->status,
+          'account_number' => $appointment->account_number,
+          'priority' => $appointment->priority,
+          'appointment_type_id' => $appointment->appointment_type_id,
+          'olt_id' => $appointment->olt_id,
+          'slot_id' => $appointment->slot_id,
+        ]);
+      }
+
+      // FIFO: enter the unassigned queue. Dispatched via FifoQueueController
+      // (Assign Next / Bulk Assign) or the scheduled fifo:dispatch command.
+      (new \App\Services\Fifo\FifoQueueService())->enqueue(
+        'appointment',
+        'appointment',
+        $appointment->id,
+        $appointment->priority,
+        $appointment->region_id
+      );
+
+      return $appointment;
+    });
+
     \Illuminate\Support\Facades\Log::info('AppointmentController@store: Appointment created successfully', [
       'appointment_id' => $appointment->id,
       'appointment_ticket_id' => $appointment->appointment_ticket_id,
     ]);
-
-    // Record initial status in status history
-    AppointmentStatusHistory::create([
-      'appointment_id' => $appointment->id,
-      'previous_status' => null,
-      'new_status' => $appointment->status,
-      'notes' => 'Initial status set during appointment creation',
-      'changed_by' => auth()->id(),
-    ]);
-
-    \Log::info('Initial appointment status recorded', [
-      'appointment_id' => $appointment->id,
-      'status' => $appointment->status,
-      'created_by' => auth()->id(),
-    ]);
-
-    // Count how many appointments with this ticket ID exist
-    $duplicateCount = Appointment::where('appointment_ticket_id', $appointment->appointment_ticket_id)->count();
-    \Illuminate\Support\Facades\Log::info('AppointmentController@store: Number of appointments with this ticket ID', [
-      'appointment_ticket_id' => $appointment->appointment_ticket_id,
-      'count' => $duplicateCount,
-    ]);
-
-    // Record history
-    if (class_exists('\Modules\Appointment\Models\AppointmentHistory')) {
-      \Modules\Appointment\Models\AppointmentHistory::create([
-        'appointment_id' => $appointment->id,
-        'action' => 'created',
-        'ticket_id' => $appointment->appointment_ticket_id,
-        'action_by' => auth()->id(),
-        'status' => $appointment->status,
-        'account_number' => $appointment->account_number,
-        'priority' => $appointment->priority,
-        'appointment_type_id' => $appointment->appointment_type_id,
-        'olt_id' => $appointment->olt_id,
-        'slot_id' => $appointment->slot_id,
-      ]);
-    }
 
     // Create notifications
     $this->notificationService->notifyAppointmentCreated($appointment);
@@ -457,6 +444,13 @@ class AppointmentController extends OptimizedController
         'team_type_id' => 'required|exists:team_types,id',
         'sub_team_type_id' => 'required|exists:sub_team_types,id',
         'assigned_team_id' => 'nullable|exists:teams,id',
+        // The mobile app's technician views (MobileAppointmentController)
+        // filter strictly by assigned_to = the logged-in user's id, but
+        // until now there was no field anywhere on this form to set it —
+        // dispatchers could only assign a Team Type + Sub Team Type
+        // (a category, not a person), so an appointment assigned this way
+        // could never appear for any technician on mobile.
+        'assigned_to' => 'nullable|exists:users,id',
         'olt_id' => 'nullable|string|max:50',
         'slot_id' => 'nullable|string|max:50',
       ]);
@@ -670,7 +664,9 @@ class AppointmentController extends OptimizedController
         'sub_department_id' => 'nullable|exists:sub_departments,id',
         'rescheduled_date' => 'nullable|date',
         'rescheduled_time' => 'nullable',
+        'reschedule_reason' => 'nullable|string',
         'closing_reason' => 'nullable|string',
+        'cancelled_reason' => 'nullable|string',
         'notes' => 'nullable|string',
         'olt_id' => 'nullable|string|max:50',
         'slot_id' => 'nullable|string|max:50',
@@ -694,19 +690,23 @@ class AppointmentController extends OptimizedController
         ]);
       }
 
-      // Map final_reason to final_reason_id
-      if (isset($validatedData['final_reason'])) {
+      // Map final_reason to final_reason_id. Must be array_key_exists, not
+      // isset: leaving the "Final Reason" dropdown on its blank placeholder
+      // validates to null, and isset(null) is false — so this rename was
+      // skipped and the literal 'final_reason' key (not a real column; only
+      // final_reason_id exists) reached $appointment->save() below,
+      // throwing "Unknown column 'final_reason'" on every status update
+      // that didn't also pick a final reason, i.e. almost every one.
+      if (array_key_exists('final_reason', $validatedData)) {
         $validatedData['final_reason_id'] = $validatedData['final_reason'];
         unset($validatedData['final_reason']);
       }
 
-      // Remove non-existent columns from validatedData
-      if (isset($validatedData['reschedule_reason'])) {
-        unset($validatedData['reschedule_reason']);
-      }
-      if (isset($validatedData['cancelled_reason'])) {
-        unset($validatedData['cancelled_reason']);
-      }
+      // reschedule_reason is now a real column (see the migration that added
+      // it). cancelled_reason was ALSO a real column all along (present
+      // since the original create_appointments_table migration) with its
+      // own form field on this page — it never needed stripping; both used
+      // to be discarded here, silently dropping whatever the user typed.
 
       // Log original data
       $originalData = $appointment->getOriginal();
@@ -775,8 +775,15 @@ class AppointmentController extends OptimizedController
       // Create notifications using the notification service
       $this->notificationService->notifyAppointmentUpdated($appointment, auth()->user());
 
+      // This save always succeeds via the "assigned" edit form, which
+      // Field-Technician users reach from My Appointments and only hold
+      // 'view-my-appointment-edit' for — not 'view-appointment-view'. A
+      // redirect to the full show() page 403'd every technician immediately
+      // after their update actually saved, masking success as a hard error.
+      // Send them back to the same assigned-edit page instead, which they
+      // are guaranteed to be allowed to see.
       return redirect()
-        ->route('appointment.appointments.show', $appointment->id)
+        ->route('appointment.appointments.edit_assigned', $appointment->id)
         ->with('success', 'Appointment updated successfully.');
     } catch (\Illuminate\Validation\ValidationException $e) {
       \Log::error('Validation failed', [
@@ -828,6 +835,32 @@ class AppointmentController extends OptimizedController
         ],
         500
       );
+    }
+  }
+
+  /**
+   * Get active users belonging to a sub team type, for the "Assigned To"
+   * cascade on the appointment edit form — mirrors
+   * Modules\Outages\Http\Controllers\OutageController::getUsersBySubTeamType().
+   *
+   * @param  int  $subTeamTypeId
+   * @return \Illuminate\Http\JsonResponse
+   */
+  public function getUsersBySubTeamType($subTeamTypeId)
+  {
+    try {
+      $users = User::where('sub_team_type_id', $subTeamTypeId)
+        ->where('user_status', 1)
+        ->orderBy('name')
+        ->get(['id', 'name', 'email']);
+
+      return response()->json([
+        'success' => true,
+        'users' => $users,
+      ]);
+    } catch (\Exception $e) {
+      \Log::error('Error fetching users for sub team type: ' . $e->getMessage());
+      return response()->json(['success' => false, 'message' => 'Failed to load users.'], 500);
     }
   }
 

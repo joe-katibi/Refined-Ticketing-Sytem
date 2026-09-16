@@ -233,4 +233,12 @@ Route::middleware('auth')->prefix('report-downloads')->name('report-downloads.')
 // Font Settings Route
 Route::post('/font-settings/update', [FontSettingsController::class, 'updateFontSize'])->name('font.update');
 
+// FIFO dispatch console — shared across escalation/appointment/outage queues.
+Route::middleware(['auth', 'verified'])->prefix('fifo/{module}')->name('fifo.')->group(function () {
+  Route::get('/', [App\Http\Controllers\FifoQueueController::class, 'index'])->name('index');
+  Route::post('/assign-next', [App\Http\Controllers\FifoQueueController::class, 'assignNext'])->name('assign-next');
+  Route::post('/bulk-assign', [App\Http\Controllers\FifoQueueController::class, 'bulkAssign'])->name('bulk-assign');
+  Route::post('/agent-availability', [App\Http\Controllers\FifoQueueController::class, 'setAgentAvailability'])->name('agent-availability');
+});
+
 require __DIR__ . '/auth.php';

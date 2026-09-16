@@ -48,6 +48,7 @@ class User extends Authenticatable
         'sub_department_id',
         'team_type_id',
         'sub_team_type_id',
+        'region_id',
         'supervisor_id',
         'is_first_login',
         'password_changed_at',
@@ -96,6 +97,11 @@ class User extends Authenticatable
     public function department()
     {
         return $this->belongsTo(Department::class , 'department_id' , 'id');
+    }
+
+    public function region()
+    {
+        return $this->belongsTo(Region::class);
     }
 
     // In User.php

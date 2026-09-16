@@ -5,10 +5,19 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Modules\Outages\Models\Outage;
-use Modules\Outages\Models\OutageHistory;
+use Modules\Outages\Models\OutageActivity;
+use Modules\Outages\Models\OutageProgress;
 use App\Models\TicketPhoto;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * `use Modules\Outages\Models\OutageHistory` referenced a class that does not
+ * exist anywhere in the codebase — no such file, no such table. update() and
+ * history() below fatal-errored ("Class not found") the instant either was
+ * called; the mobile outage-update flow was completely non-functional, not
+ * just subtly wrong. The real audit trail model is OutageActivity
+ * (outage_activities table), already used by the web OutageController.
+ */
 class MobileOutageController extends Controller
 {
     /**
@@ -24,8 +33,12 @@ class MobileOutageController extends Controller
                 'user_email' => $user->email
             ]);
 
-            $outages = Outage::with(['teamType', 'subTeamType'])
-                ->where('assigned_team_id', $user->team_type_id)
+            // Was Outage::with(['teamType', 'subTeamType']) — neither relation
+            // exists on this model (the real names are assignedTeam() and
+            // assignedSubTeamType()), so every call to this endpoint threw
+            // "Call to undefined relationship [teamType]" and 500'd before
+            // reaching any of the actual response logic below.
+            $outages = Outage::where('assigned_to', $user->id)
                 ->orderBy('created_at', 'desc')
                 ->paginate(20);
 
@@ -35,35 +48,30 @@ class MobileOutageController extends Controller
                 'user_team_type_id' => $user->team_type_id
             ]);
 
-            // Transform outages to ensure null values are handled for Flutter
+            // Transform outages to ensure null values are handled for Flutter.
+            // Was built entirely from fictional columns (outage_ticket_id,
+            // customer_name, customer_phone, location, estimated_resolution,
+            // progress_notes) that don't exist on the real Outage model — every
+            // one of those resolved to null via Eloquent's magic __get and then
+            // to '' via the ?? fallback, regardless of real data. Outages have
+            // no per-customer contact fields at all; they're infrastructure
+            // incidents (see total_customers_affected).
             $transformedOutages = collect($outages->items())->map(function ($outage) {
                 return [
                     'id' => $outage->id,
-                    'outage_ticket_id' => $outage->outage_ticket_id ?? '',
-                    'customer_name' => $outage->customer_name ?? '',
-                    'customer_phone' => $outage->customer_phone ?? '',
-                    'location' => $outage->location ?? '',
+                    'ticket_number' => $outage->ticket_number ?? '',
+                    'title' => $outage->title ?? '',
                     'description' => $outage->description ?? '',
                     'priority' => $outage->priority ?? '',
+                    'impact' => $outage->impact ?? '',
+                    'urgency' => $outage->urgency ?? '',
                     'status' => $outage->status ?? '',
-                    'assigned_team_id' => $outage->assigned_team_id ?? '',
-                    'estimated_resolution' => $outage->estimated_resolution ?? '',
-                    'progress_notes' => $outage->progress_notes ?? '',
+                    'assigned_team_id' => $outage->assigned_team_id,
+                    'total_customers_affected' => $outage->total_customers_affected ?? 0,
                     'resolution_notes' => $outage->resolution_notes ?? '',
+                    'root_cause' => $outage->root_cause ?? '',
                     'created_at' => $outage->created_at ? $outage->created_at->toISOString() : '',
                     'updated_at' => $outage->updated_at ? $outage->updated_at->toISOString() : '',
-                    'team_type' => [
-                        'id' => $outage->teamType->id ?? '',
-                        'type_name' => $outage->teamType->type_name ?? '',
-                        'description' => $outage->teamType->description ?? '',
-                        'status' => $outage->teamType->status ?? '',
-                    ],
-                    'sub_team_type' => $outage->subTeamType ? [
-                        'id' => $outage->subTeamType->id ?? '',
-                        'sub_type_name' => $outage->subTeamType->sub_type_name ?? '',
-                        'sub_type_description' => $outage->subTeamType->sub_type_description ?? '',
-                        'sub_type_status' => $outage->subTeamType->sub_type_status ?? '',
-                    ] : null,
                 ];
             });
 
@@ -97,8 +105,8 @@ class MobileOutageController extends Controller
     {
         $user = $request->user();
         
-        $outage = Outage::with(['teamType', 'subTeamType', 'photos'])
-            ->where('assigned_team_id', $user->team_type_id)
+        $outage = Outage::with(['assignedTeam', 'assignedSubTeamType', 'photos'])
+            ->where('assigned_to', $user->id)
             ->findOrFail($id);
 
         return response()->json([
@@ -113,32 +121,38 @@ class MobileOutageController extends Controller
     {
         $user = $request->user();
         
-        $outage = Outage::where('assigned_team_id', $user->team_type_id)
+        $outage = Outage::where('assigned_to', $user->id)
             ->findOrFail($id);
 
+        // Was validating/writing 'progress_notes' and 'estimated_resolution' —
+        // neither is a real column on outages (only resolution_notes is).
+        // 'progress_notes' now creates a proper OutageProgress entry, matching
+        // how the web OutageController::storeProgress() records progress.
         $request->validate([
             'status' => 'nullable|string',
             'progress_notes' => 'nullable|string',
             'resolution_notes' => 'nullable|string',
-            'estimated_resolution' => 'nullable|date',
         ]);
 
-        $oldData = $outage->toArray();
+        $previousStatus = $outage->status;
 
-        // Update outage
-        $outage->update($request->only([
-            'status', 'progress_notes', 'resolution_notes', 'estimated_resolution'
-        ]));
+        $outage->update($request->only(['status', 'resolution_notes']));
+        $outage->refresh();
 
-        // Create history record
-        OutageHistory::create([
-            'outage_id' => $outage->id,
-            'user_id' => $user->id,
-            'action' => 'updated',
-            'old_values' => json_encode($oldData),
-            'new_values' => json_encode($outage->fresh()->toArray()),
-            'notes' => $request->progress_notes,
-        ]);
+        if ($request->filled('status') && $previousStatus !== $outage->status) {
+            OutageActivity::logStatusChange($outage, $previousStatus, $outage->status, $user, $request->input('progress_notes'));
+        }
+
+        if ($request->filled('progress_notes')) {
+            OutageProgress::create([
+                'outage_id' => $outage->id,
+                'user_id' => $user->id,
+                'status' => $outage->status,
+                'notes' => $request->input('progress_notes'),
+                'created_by' => $user->id,
+            ]);
+            OutageActivity::logProgressAdded($outage, $user, $request->input('progress_notes'));
+        }
 
         return response()->json([
             'message' => 'Outage updated successfully',
@@ -153,10 +167,10 @@ class MobileOutageController extends Controller
     {
         $user = $request->user();
         
-        $outage = Outage::where('assigned_team_id', $user->team_type_id)
+        $outage = Outage::where('assigned_to', $user->id)
             ->findOrFail($id);
 
-        $history = OutageHistory::with('user')
+        $history = OutageActivity::with('user')
             ->where('outage_id', $id)
             ->orderBy('created_at', 'desc')
             ->get();
@@ -173,7 +187,7 @@ class MobileOutageController extends Controller
     {
         $user = $request->user();
         
-        $outage = Outage::where('assigned_team_id', $user->team_type_id)
+        $outage = Outage::where('assigned_to', $user->id)
             ->findOrFail($id);
 
         $request->validate([
@@ -207,7 +221,7 @@ class MobileOutageController extends Controller
     {
         $user = $request->user();
         
-        $outage = Outage::where('assigned_team_id', $user->team_type_id)
+        $outage = Outage::where('assigned_to', $user->id)
             ->findOrFail($id);
 
         $photos = TicketPhoto::with('uploader')
@@ -227,12 +241,15 @@ class MobileOutageController extends Controller
     public function performance(Request $request)
     {
         $user = $request->user();
-        
-        $totalOutages = Outage::where('assigned_team_id', $user->team_type_id)->count();
-        $resolvedOutages = Outage::where('assigned_team_id', $user->team_type_id)
-            ->where('status', 'noc-restore-confirmed')->count();
-        $activeOutages = Outage::where('assigned_team_id', $user->team_type_id)
-            ->whereNotIn('status', ['noc-restore-confirmed', 'support-closed'])->count();
+
+        // Same bug as MobileAppointmentController@performance: compared
+        // outages.assigned_team_id (a team FK) against $user->team_type_id (an
+        // unrelated table's FK) — switched to per-user assigned_to.
+        $totalOutages = Outage::where('assigned_to', $user->id)->count();
+        $resolvedOutages = Outage::where('assigned_to', $user->id)
+            ->whereIn('status', ['infra-resolved', 'noc-restore-confirmed', 'support-closed'])->count();
+        $activeOutages = Outage::where('assigned_to', $user->id)
+            ->whereNotIn('status', ['infra-resolved', 'noc-restore-confirmed', 'support-closed'])->count();
         
         $resolutionRate = $totalOutages > 0 ? 
             round(($resolvedOutages / $totalOutages) * 100, 2) : 0;
