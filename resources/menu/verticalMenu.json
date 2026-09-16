@@ -126,6 +126,12 @@
           "permission": "view-appointment-list-menu"
         },
         {
+          "name": "Installation Upload",
+          "url": "/installation-upload",
+          "slug": "installation-upload.create",
+          "permission": "view-appointment-create"
+        },
+        {
           "name": "Assigned Appointments",
           "url": "/appointments/assigned",
           "slug": "appointment.appointments.assigned",

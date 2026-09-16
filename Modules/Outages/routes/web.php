@@ -1,19 +1,18 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Modules\Outages\Http\Controllers\OutageController;
-use Modules\Outages\Http\Controllers\OutageTicketController;
-use Modules\Outages\Http\Controllers\OutageReportController;
-use Modules\Outages\Http\Controllers\OutageDashboardController;
-use Modules\Outages\Http\Controllers\OutageFinalReasonController;
 use Modules\Outages\Http\Controllers\AffectedAreaController;
 use Modules\Outages\Http\Controllers\AffectedServiceController;
-use Modules\Outages\Http\Controllers\OltController;
-use Modules\Outages\Http\Controllers\FdtController;
-use Modules\Outages\Http\Controllers\FatController;
 use Modules\Outages\Http\Controllers\CustomerController;
+use Modules\Outages\Http\Controllers\FatController;
+use Modules\Outages\Http\Controllers\FdtController;
+use Modules\Outages\Http\Controllers\OltController;
 use Modules\Outages\Http\Controllers\OltUploadController;
-
+use Modules\Outages\Http\Controllers\OutageController;
+use Modules\Outages\Http\Controllers\OutageDashboardController;
+use Modules\Outages\Http\Controllers\OutageFinalReasonController;
+use Modules\Outages\Http\Controllers\OutageReportController;
+use Modules\Outages\Http\Controllers\OutageTicketController;
 
 /*
 |--------------------------------------------------------------------------
@@ -35,7 +34,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         'show' => 'permission:view-view-outage',
         'edit' => 'permission:view-edit-outage',
         'update' => 'permission:view-edit-outage',
-        'destroy' => 'permission:view-delete-outage'
+        'destroy' => 'permission:view-delete-outage',
     ]);
 
     // Additional outage routes
@@ -59,17 +58,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Final Reasons Management
     Route::resource('final-reasons', OutageFinalReasonController::class, [
-        'as' => 'outages'
+        'as' => 'outages',
     ])->middleware('permission:view-outage-final-reasons-menu');
 
     // Affected Areas Management
     Route::resource('affected-areas', AffectedAreaController::class, [
-        'as' => 'outages'
+        'as' => 'outages',
     ])->middleware('permission:view-affected-areas-menu');
 
     // Affected Services Management
     Route::resource('affected-services', AffectedServiceController::class, [
-        'as' => 'outages'
+        'as' => 'outages',
     ])->middleware('permission:view-affected-services-menu');
 
     // Reports
@@ -129,6 +128,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('api/fdts/{fdt}/fats', [FatController::class, 'getFats'])->name('api.fdts.fats');
 
     // Customer Management Routes
+    // Registered before the resource route below so the literal path
+    // "customers/search" isn't shadowed by the resource's "customers/{customer}"
+    // show route, which would otherwise try (and fail) to bind "search" as
+    // a customer ID.
+    Route::get('customers/search', [CustomerController::class, 'search'])->name('customers.search');
     Route::resource('customers', CustomerController::class)->middleware('permission:view-olt-management-menu');
     Route::get('fats/{fat}/customers/create', [CustomerController::class, 'create'])->name('fats.customers.create')->middleware('permission:view-olt-management-menu');
     Route::post('fats/{fat}/customers', [CustomerController::class, 'store'])->name('fats.customers.store')->middleware('permission:view-olt-management-menu');

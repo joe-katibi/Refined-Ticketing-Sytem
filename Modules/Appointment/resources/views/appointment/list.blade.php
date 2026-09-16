@@ -8,6 +8,12 @@ $configData = Helper::appClasses();
 
 @section('content')
 <div class="container-xxxl flex-grow-1 container-p-y">
+    <div class="d-flex justify-content-end mb-3">
+        <a href="{{ route('installation-upload.create') }}" class="btn btn-outline-primary btn-xs">
+            <i class="bx bx-upload me-1"></i>Bulk Upload Installation Data
+        </a>
+    </div>
+
     @if(session('success'))
         <div class="alert alert-success alert-dismissible" role="alert">
             {{ session('success') }}

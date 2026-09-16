@@ -3,12 +3,12 @@
 namespace Modules\Outages\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 use Modules\Outages\Models\Customer;
 use Modules\Outages\Models\Fat;
-use Illuminate\Support\Facades\Auth;
 
 class CustomerController extends Controller
 {
@@ -23,13 +23,13 @@ class CustomerController extends Controller
             $search = $request->get('search');
             $query->where(function ($q) use ($search) {
                 $q->where('account_number', 'like', "%{$search}%")
-                  ->orWhere('name', 'like', "%{$search}%")
-                  ->orWhere('mobile_number', 'like', "%{$search}%")
-                  ->orWhere('alternative_number', 'like', "%{$search}%")
-                  ->orWhere('onu_type', 'like', "%{$search}%")
-                  ->orWhereHas('fat.fdt.ponPort.oltSlot.olt', function ($q) use ($search) {
-                      $q->where('name', 'like', "%{$search}%");
-                  });
+                    ->orWhere('name', 'like', "%{$search}%")
+                    ->orWhere('mobile_number', 'like', "%{$search}%")
+                    ->orWhere('alternative_number', 'like', "%{$search}%")
+                    ->orWhere('onu_type', 'like', "%{$search}%")
+                    ->orWhereHas('fat.fdt.ponPort.oltSlot.olt', function ($q) use ($search) {
+                        $q->where('name', 'like', "%{$search}%");
+                    });
             });
         }
 
@@ -41,6 +41,42 @@ class CustomerController extends Controller
         $statuses = ['Active', 'Inactive', 'Suspended'];
 
         return view('outages::customers.index', compact('customers', 'statuses'));
+    }
+
+    /**
+     * AJAX lookup for pages that need to attach a real customer record to
+     * something else (e.g. picking a customer while creating an escalation)
+     * instead of typing a free-text account number. Deliberately not behind
+     * the olt-management permission — anyone who can reach the page doing
+     * the lookup (already auth-gated by the enclosing route group) should
+     * be able to search customers by name/account/mobile.
+     */
+    public function search(Request $request)
+    {
+        $term = trim((string) $request->get('q', ''));
+
+        if ($term === '') {
+            return response()->json([]);
+        }
+
+        $customers = Customer::query()
+            ->where(function ($q) use ($term) {
+                $q->where('account_number', 'like', "%{$term}%")
+                    ->orWhere('name', 'like', "%{$term}%")
+                    ->orWhere('mobile_number', 'like', "%{$term}%");
+            })
+            ->orderBy('name')
+            ->limit(10)
+            ->get(['id', 'account_number', 'name', 'mobile_number', 'address']);
+
+        return response()->json($customers->map(fn ($c) => [
+            'id' => $c->id,
+            'account_number' => $c->account_number,
+            'name' => $c->name,
+            'mobile_number' => $c->mobile_number,
+            'address' => $c->address,
+            'label' => "{$c->account_number} — {$c->name}".($c->mobile_number ? " ({$c->mobile_number})" : ''),
+        ]));
     }
 
     /**
@@ -130,7 +166,7 @@ class CustomerController extends Controller
     private function validateCustomer(Request $request, ?int $customerId = null): array
     {
         return $request->validate([
-            'account_number' => 'required|string|max:255|unique:customers,account_number,' . ($customerId ?? 'NULL') . ',id',
+            'account_number' => 'required|string|max:255|unique:customers,account_number,'.($customerId ?? 'NULL').',id',
             'name' => 'required|string|max:255',
             'mobile_number' => 'nullable|string|max:20',
             'alternative_number' => 'nullable|string|max:20',
