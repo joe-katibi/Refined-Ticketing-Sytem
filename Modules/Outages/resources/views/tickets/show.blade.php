@@ -392,6 +392,12 @@ $configData = Helper::appClasses();
 .reason-item {
     background-color: #f8f9fa;
 }
+.dark-style .attachment-item {
+    border-color: #444564;
+}
+.dark-style .reason-item {
+    background-color: #2b2c40;
+}
 </style>
 @endpush
 

@@ -91,20 +91,91 @@
     }
 }
 
-/* Fix for dark mode */
-[data-bs-theme="dark"] .dataTables_wrapper .table thead th {
+/* Fix for dark mode
+   This template signals dark mode via a `dark-style` class on <html>
+   (set by template-customizer.js / assets/vendor/js/template-customizer.js),
+   not the Bootstrap 5 `data-bs-theme` attribute — the selector below never
+   matched, leaving the DataTables chrome stuck light against a dark page. */
+.dark-style .dataTables_wrapper .table thead th {
     background-color: #2b2c40;
     color: #a3a4cc;
     border-bottom-color: #444564;
 }
 
-[data-bs-theme="dark"] .dataTables_wrapper .table tbody td {
+.dark-style .dataTables_wrapper .table tbody td {
     border-bottom-color: #444564;
 }
 
-[data-bs-theme="dark"] .dataTables_wrapper .dataTables_filter input,
-[data-bs-theme="dark"] .dataTables_wrapper .dataTables_length select {
+.dark-style .dataTables_wrapper .dataTables_filter input,
+.dark-style .dataTables_wrapper .dataTables_length select {
     background-color: #2b2c40;
     border-color: #444564;
+    color: #a3a4cc;
+}
+
+.dark-style .dataTables_wrapper .dataTables_info,
+.dark-style .dataTables_wrapper .dataTables_paginate .paginate_button {
+    color: #a3a4cc;
+}
+
+.dark-style .dataTables_wrapper .dataTables_paginate .paginate_button:not(.active):not(.current),
+.dark-style .dataTables_wrapper .dataTables_paginate .paginate_button:not(.active):not(.current) .page-link {
+    background-color: #2b2c40;
+    border-color: #444564;
+    color: #a3a4cc;
+}
+
+.dark-style .dataTables_wrapper .dataTables_paginate .paginate_button.disabled {
+    color: #6c6d8a !important;
+}
+
+/* Bootstrap's contextual row/cell classes (table-info, table-warning, ...)
+   use light, near-white backgrounds with dark text by design, and the
+   template's dark theme doesn't repaint them — e.g. the notifications list
+   marks unread rows with table-info, which read as washed-out pale-on-pale
+   text once the surrounding page goes dark. Give each variant a dark
+   background from the theme's own status colors, dark text kept readable. */
+.dark-style .table-primary,
+.dark-style .table-primary > th,
+.dark-style .table-primary > td {
+    background-color: rgba(105, 108, 255, 0.16);
+    color: #a3a4cc;
+}
+
+.dark-style .table-info,
+.dark-style .table-info > th,
+.dark-style .table-info > td {
+    background-color: rgba(3, 195, 236, 0.14);
+    color: #a3a4cc;
+}
+
+.dark-style .table-success,
+.dark-style .table-success > th,
+.dark-style .table-success > td {
+    background-color: rgba(40, 199, 111, 0.14);
+    color: #a3a4cc;
+}
+
+.dark-style .table-warning,
+.dark-style .table-warning > th,
+.dark-style .table-warning > td {
+    background-color: rgba(255, 159, 67, 0.16);
+    color: #a3a4cc;
+}
+
+.dark-style .table-danger,
+.dark-style .table-danger > th,
+.dark-style .table-danger > td {
+    background-color: rgba(234, 84, 85, 0.16);
+    color: #a3a4cc;
+}
+
+.dark-style .table-secondary,
+.dark-style .table-secondary > th,
+.dark-style .table-secondary > td,
+.dark-style .table-light,
+.dark-style .table-light > th,
+.dark-style .table-light > td {
+    background-color: #383856;
     color: #a3a4cc;
 }

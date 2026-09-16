@@ -242,6 +242,27 @@ $configData = Helper::appClasses();
         color: #28a745;
         margin-left: 5px;
     }
+
+    .dark-style .timeline-item {
+        border-left-color: #444564;
+    }
+
+    .dark-style .timeline-content {
+        background-color: #323249;
+    }
+
+    .dark-style .timeline-content:after {
+        border-color: transparent #323249 transparent transparent;
+    }
+
+    .dark-style .changes-container {
+        background-color: #2b2c40;
+        border-color: #444564;
+    }
+
+    .dark-style .change-item {
+        border-bottom-color: #444564;
+    }
 </style>
 @endpush
 

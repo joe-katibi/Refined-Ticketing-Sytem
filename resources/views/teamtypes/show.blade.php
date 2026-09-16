@@ -22,6 +22,15 @@ $configData = Helper::appClasses();
     .info-value {
         color: #212529;
     }
+    .dark-style .info-box {
+        background-color: #2b2c40;
+    }
+    .dark-style .info-label {
+        color: #a3a4cc;
+    }
+    .dark-style .info-value {
+        color: #cbcbe2;
+    }
 </style>
 @endpush
 

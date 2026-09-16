@@ -5,125 +5,16 @@
 'use strict';
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Fix for theme toggle button
-    const styleSwitcher = document.querySelector('.dropdown-style-switcher');
-    if (styleSwitcher) {
-        const styleSwitcherItems = [].slice.call(styleSwitcher.querySelectorAll('.dropdown-item'));
-        const styleSwitcherIcon = styleSwitcher.querySelector('i');
-        
-        // Simple direct theme switching function
-        function applyTheme(theme) {
-            // Save the theme preference to localStorage
-            localStorage.setItem('templateCustomizer-' + window.templateName + '--Style', theme);
-            
-            const html = document.documentElement;
-            
-            if (theme === 'dark') {
-                // Apply dark theme
-                html.classList.add('dark-mode');
-                html.setAttribute('data-theme', 'dark');
-                
-                // Update icon
-                if (styleSwitcherIcon) {
-                    styleSwitcherIcon.classList.remove('ti-sun', 'ti-moon', 'ti-device-desktop');
-                    styleSwitcherIcon.classList.add('ti-moon');
-                }
-                
-                // Also try to use the built-in theme system
-                if (window.templateCustomizer) {
-                    try {
-                        window.templateCustomizer.setStyle('dark');
-                    } catch (e) {
-                        console.log('Using fallback dark mode');
-                    }
-                }
-            } else if (theme === 'light') {
-                // Apply light theme
-                html.classList.remove('dark-mode');
-                html.setAttribute('data-theme', 'light');
-                
-                // Update icon
-                if (styleSwitcherIcon) {
-                    styleSwitcherIcon.classList.remove('ti-sun', 'ti-moon', 'ti-device-desktop');
-                    styleSwitcherIcon.classList.add('ti-sun');
-                }
-                
-                // Also try to use the built-in theme system
-                if (window.templateCustomizer) {
-                    try {
-                        window.templateCustomizer.setStyle('light');
-                    } catch (e) {
-                        console.log('Using fallback light mode');
-                    }
-                }
-            } else if (theme === 'system') {
-                // Check system preference
-                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                
-                if (prefersDark) {
-                    // Apply dark theme
-                    html.classList.add('dark-mode');
-                    html.setAttribute('data-theme', 'dark');
-                    
-                    // Update icon
-                    if (styleSwitcherIcon) {
-                        styleSwitcherIcon.classList.remove('ti-sun', 'ti-moon', 'ti-device-desktop');
-                        styleSwitcherIcon.classList.add('ti-device-desktop');
-                    }
-                    
-                    // Also try to use the built-in theme system
-                    if (window.templateCustomizer) {
-                        try {
-                            window.templateCustomizer.setStyle('dark');
-                        } catch (e) {
-                            console.log('Using fallback dark mode (system)');
-                        }
-                    }
-                } else {
-                    // Apply light theme
-                    html.classList.remove('dark-mode');
-                    html.setAttribute('data-theme', 'light');
-                    
-                    // Update icon
-                    if (styleSwitcherIcon) {
-                        styleSwitcherIcon.classList.remove('ti-sun', 'ti-moon', 'ti-device-desktop');
-                        styleSwitcherIcon.classList.add('ti-device-desktop');
-                    }
-                    
-                    // Also try to use the built-in theme system
-                    if (window.templateCustomizer) {
-                        try {
-                            window.templateCustomizer.setStyle('light');
-                        } catch (e) {
-                            console.log('Using fallback light mode (system)');
-                        }
-                    }
-                }
-            }
-        }
-        
-        // Set the initial icon and theme based on current theme
-        const storedStyle = localStorage.getItem('templateCustomizer-' + window.templateName + '--Style') || 'light';
-        applyTheme(storedStyle);
-
-        
-        // Ensure the theme toggle button works properly
-        styleSwitcherItems.forEach(function(item) {
-            // Remove any existing event listeners
-            const newItem = item.cloneNode(true);
-            item.parentNode.replaceChild(newItem, item);
-            
-            // Add new event listener with our direct theme switching
-            newItem.addEventListener('click', function() {
-                const currentStyle = this.getAttribute('data-theme');
-                applyTheme(currentStyle);
-            });
-        });
-        
-        // Apply the current theme on page load
-        const currentTheme = localStorage.getItem('templateCustomizer-' + window.templateName + '--Style') || 'light';
-        applyTheme(currentTheme);
-    }
+    // Theme switching (light/dark/system) is handled by main.js via
+    // window.templateCustomizer.setStyle(), backed by the official Sneat
+    // core-dark.css/theme-default-dark.css stylesheets. This file used to
+    // clone the dropdown items and re-implement switching itself, but that
+    // ran *after* main.js's listeners and replaced them via cloneNode,
+    // permanently disabling the real switcher — and its own fallback set a
+    // 'dark-mode' class that no stylesheet targets (the template keys off
+    // the 'dark-style' class + swapped <link> hrefs), so toggling changed
+    // the icon but never repainted the page. Do not reintroduce a second
+    // listener here.
 
     // Fix for menu minimizing button
     const menuToggler = document.querySelectorAll('.layout-menu-toggle');

@@ -355,20 +355,64 @@ body {
     .dashboard-container {
         padding: 1rem 0.5rem;
     }
-    
+
     .project-title {
         font-size: 2.5rem;
     }
-    
+
     .stats-overview {
         grid-template-columns: 1fr;
         gap: 1rem;
     }
-    
+
     .module-stats {
         grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
         gap: 1rem;
     }
+}
+
+/* This dashboard predates the site-wide dark theme and hardcodes its own
+   light colors (white cards, #2d3748 headings, etc.) instead of the
+   template's Bootstrap CSS variables, so the global dark-style stylesheet
+   swap (core-dark.css/theme-default-dark.css) never reaches it. Re-theme
+   the same selectors here, scoped to .dark-style, rather than rewriting the
+   section to use theme variables throughout. */
+.dark-style body {
+    background: linear-gradient(120deg, #1a1c2e 0%, #14152a 100%);
+}
+
+.dark-style .stat-card {
+    background: #2b2c40;
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+.dark-style .module-section,
+.dark-style .quick-actions {
+    background: #2b2c40;
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.dark-style .module-header {
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark-style .module-title,
+.dark-style .quick-actions-title {
+    color: #cbcbe2;
+}
+
+.dark-style .module-icon {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2));
+}
+
+.dark-style .module-stat-card {
+    background: linear-gradient(135deg, #323249, #383856);
+    border-color: rgba(255, 255, 255, 0.06);
+}
+
+.dark-style .module-stat-label {
+    color: #a3a4cc;
 }
 </style>
 @endsection
