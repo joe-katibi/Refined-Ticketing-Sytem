@@ -60,12 +60,23 @@ $configData = Helper::appClasses();
                             <select name="status" id="status" class="form-select status-select">
                                 <option value="">All Statuses</option>
                                 @foreach($statuses as $status)
-                                    <option value="{{ $status->name }}" 
+                                    <option value="{{ $status->name }}"
                                         {{ request('status') == $status->name ? 'selected' : '' }}
                                         data-color="{{ $status->color }}"
                                         data-badge-class="{{ $status->badge_class }}"
                                     >
                                         {{ $status->display_name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="olt_id" class="form-label">Filter by OLT</label>
+                            <select name="olt_id" id="olt_id" class="form-select">
+                                <option value="">All OLTs</option>
+                                @foreach($olts as $olt)
+                                    <option value="{{ $olt->id }}" {{ request('olt_id') == $olt->id ? 'selected' : '' }}>
+                                        {{ $olt->name }}
                                     </option>
                                 @endforeach
                             </select>
@@ -77,10 +88,15 @@ $configData = Helper::appClasses();
                     </form>
                 </div>
 
+                <form method="POST" action="{{ route('appointment.appointments.bulk_assign') }}" class="bulk-assign-form" id="bulk-assign-form-main">
+                    @csrf
+                    @include('appointment::appointment.partials.bulk-assign-toolbar', ['teamTypes' => $teamTypes, 'formId' => 'main'])
+
                 <div class="responsive-table-wrapper">
                     <table class="table table-bordered responsive-table mobile-card-table" id="appointments-table">
                         <thead>
                             <tr>
+                                <th><input type="checkbox" class="select-all" data-form="main"></th>
                                 <th>#</th>
                                 <th>Ticket ID</th>
                                 <th class="d-none-mobile">Account</th>
@@ -96,6 +112,11 @@ $configData = Helper::appClasses();
                         <tbody>
                             @forelse($appointments as $appointment)
                                 <tr>
+                                    <td>
+                                        @if($appointment->status === 'scheduled-assigned-team')
+                                            <input type="checkbox" name="appointment_ids[]" value="{{ $appointment->id }}" class="row-check" data-form="main">
+                                        @endif
+                                    </td>
                                     <td>{{ $loop->iteration }}</td>
                                     <td>{{ $appointment->appointment_ticket_id }}</td>
                                     <td>{{ $appointment->account_number }}</td>
@@ -141,13 +162,14 @@ $configData = Helper::appClasses();
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="10" class="text-center">No appointments found.</td>
+                                    <td colspan="11" class="text-center">No appointments found.</td>
                                 </tr>
                             @endforelse
                         </tbody>
                     </table>
                 </div>
-                
+                </form>
+
                 <!-- Mobile Card View -->
                 <div class="mobile-card-view d-none">
                     @forelse($appointments as $appointment)
@@ -269,9 +291,41 @@ $configData = Helper::appClasses();
 <script>
 $(document).ready(function() {
 $('#appointments-table').DataTable({
-  responsive: true
+  responsive: true,
+  columnDefs: [{ orderable: false, targets: 0 }] // checkbox column
+});
+
+function updateSelectedCount(form) {
+    var count = $('.row-check[data-form="' + form + '"]:checked').length;
+    $('.selected-count[data-form="' + form + '"]').text(count);
+}
+
+$(document).on('change', '.select-all', function() {
+    var form = $(this).data('form');
+    $('.row-check[data-form="' + form + '"]').prop('checked', this.checked);
+    updateSelectedCount(form);
+});
+
+$(document).on('change', '.row-check', function() {
+    updateSelectedCount($(this).data('form'));
+});
+
+$('.bulk-assign-form').on('submit', function(e) {
+    var $form = $(this);
+    var checked = $form.find('.row-check:checked').length;
+    if (checked === 0) {
+        e.preventDefault();
+        alert('Select at least one appointment to bulk-assign.');
+        return false;
+    }
+    if (!$form.find('select[name="team_type_id"]').val() || !$form.find('select[name="sub_team_type_id"]').val()) {
+        e.preventDefault();
+        alert('Choose a Team and Sub Team before bulk-assigning.');
+        return false;
+    }
 });
 });
 </script>
+@include('appointment::appointment.partials.bulk-assign-cascade-script')
 @endsection
 

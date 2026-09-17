@@ -57,14 +57,25 @@ class AppointmentController extends OptimizedController
             $query->where('status', $request->status);
         }
 
-        $appointments = $query->latest()->paginate(25);
+        // Apply OLT filter if provided
+        if ($request->filled('olt_id')) {
+            $query->where('olt_id', $request->olt_id);
+        }
+
+        $appointments = $query->latest()->paginate(25)->withQueryString();
 
         // Get all active statuses for the filter dropdown
         $statuses = AppointmentStatus::active()
             ->orderBy('sort_order')
             ->get();
 
-        return view('appointment::appointment.index', compact('appointments', 'statuses'));
+        $olts = Olt::orderBy('name')->get();
+
+        // For the bulk-assign toolbar's Team dropdown (same source as
+        // assigned()/edit() use).
+        $teamTypes = TeamType::active()->get();
+
+        return view('appointment::appointment.index', compact('appointments', 'statuses', 'olts', 'teamTypes'));
     }
 
     /**
