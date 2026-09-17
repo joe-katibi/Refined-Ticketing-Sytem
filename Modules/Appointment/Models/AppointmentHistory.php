@@ -2,10 +2,9 @@
 
 namespace Modules\Appointment\Models;
 
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Modules\Appointment\Models\Appointment;
-use App\Models\User;
 
 class AppointmentHistory extends Model
 {
@@ -26,6 +25,12 @@ class AppointmentHistory extends Model
         'escalation_ticket_id',
         'ticket_id',
         'status',
+        // Real, indexed column (create_appointment_histories_table migration)
+        // that was missing here — every AppointmentHistory::create(['action'
+        // => ...]) call across AppointmentController (store/update/destroy,
+        // and bulkAssign) was silently dropping it during mass assignment,
+        // leaving every history row's action column NULL.
+        'action',
         'action_by',
         'assigned_to',
         'sub_department_id',
@@ -138,37 +143,33 @@ class AppointmentHistory extends Model
     {
         return $this->belongsTo(\App\Models\SubDepartment::class, 'sub_department_id');
     }
-    
+
     /**
      * Get the formatted time spent for this history entry.
-     *
-     * @return string
      */
     public function getFormattedTimeSpent(): string
     {
         if ($this->time_spent_minutes) {
             $hours = floor($this->time_spent_minutes / 60);
             $minutes = $this->time_spent_minutes % 60;
-            
+
             if ($hours > 0) {
-                return $hours . ' hour' . ($hours > 1 ? 's' : '') . ' ' . $minutes . ' minute' . ($minutes != 1 ? 's' : '');
+                return $hours.' hour'.($hours > 1 ? 's' : '').' '.$minutes.' minute'.($minutes != 1 ? 's' : '');
             } else {
-                return $minutes . ' minute' . ($minutes != 1 ? 's' : '');
+                return $minutes.' minute'.($minutes != 1 ? 's' : '');
             }
         }
-        
+
         return 'N/A';
     }
-    
+
     /**
      * Get the timeline icon class based on action description.
-     *
-     * @return string
      */
     public function getTimelineIcon(): string
     {
         $actionDesc = strtolower($this->action_description ?? '');
-        
+
         if (str_contains($actionDesc, 'created')) {
             return 'fa-plus-circle';
         } elseif (str_contains($actionDesc, 'updated') || str_contains($actionDesc, 'edit')) {
@@ -183,15 +184,13 @@ class AppointmentHistory extends Model
             return 'fa-exclamation-circle';
         }
     }
-    
+
     /**
      * Get the status badge class.
-     *
-     * @return string
      */
     public function getStatusBadgeClass(): string
     {
-        return match($this->status) {
+        return match ($this->status) {
             'completed' => 'success',
             'in_progress' => 'primary',
             'cancelled' => 'danger',

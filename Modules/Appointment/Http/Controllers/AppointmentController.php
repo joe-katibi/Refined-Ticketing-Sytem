@@ -113,7 +113,78 @@ class AppointmentController extends OptimizedController
                 ->get();
         }
 
-        return view('appointment::appointment.assigned', compact('inhouseAppointments', 'outsourceAppointments'));
+        // For the bulk-assign toolbar's Team Type dropdown (same source as
+        // the single-appointment edit() form uses).
+        $teamTypes = TeamType::active()->get();
+
+        return view(
+            'appointment::appointment.assigned',
+            compact('inhouseAppointments', 'outsourceAppointments', 'teamTypes')
+        );
+    }
+
+    /**
+     * Bulk-assign Team Type, Sub Team Type, Technician, and (for Outsource
+     * Partner) Assign Team to multiple appointments at once — the same
+     * fields update() sets for a single appointment, applied to every
+     * selected row. Only ever reached from the Assigned Appointments page,
+     * where every listed appointment is already in a team-assigned-family
+     * status, so this deliberately does NOT touch `status` — that field is
+     * about ticket lifecycle, not who's working it, and bulk-changing it
+     * for a mixed batch of tickets would be guessing at intent no form
+     * field here actually asked for.
+     */
+    public function bulkAssign(Request $request)
+    {
+        $validated = $request->validate([
+            'appointment_ids' => 'required|array|min:1',
+            'appointment_ids.*' => 'exists:appointments,id',
+            'team_type_id' => 'required|exists:team_types,id',
+            'sub_team_type_id' => 'required|exists:sub_team_types,id',
+            'assigned_to' => 'nullable|exists:users,id',
+            'assigned_team_id' => 'nullable|exists:teams,id',
+        ]);
+
+        $updated = 0;
+
+        DB::transaction(function () use ($validated, &$updated) {
+            $appointments = Appointment::whereIn('id', $validated['appointment_ids'])->get();
+
+            foreach ($appointments as $appointment) {
+                $appointment->team_type_id = $validated['team_type_id'];
+                $appointment->sub_team_type_id = $validated['sub_team_type_id'];
+                $appointment->assigned_to = $validated['assigned_to'] ?? null;
+                $appointment->assigned_team_id = $validated['assigned_team_id'] ?? null;
+                $appointment->edited_by = auth()->id();
+                $appointment->save();
+
+                if (class_exists('\Modules\Appointment\Models\AppointmentHistory')) {
+                    \Modules\Appointment\Models\AppointmentHistory::create([
+                        'appointment_id' => $appointment->id,
+                        'action' => 'bulk_assigned',
+                        'ticket_id' => $appointment->appointment_ticket_id,
+                        'action_by' => auth()->id(),
+                        'status' => $appointment->status,
+                        'account_number' => $appointment->account_number,
+                        'priority' => $appointment->priority,
+                        'appointment_type_id' => $appointment->appointment_type_id,
+                        'team_type_id' => $appointment->team_type_id,
+                        'sub_team_type_id' => $appointment->sub_team_type_id,
+                        'assigned_team_id' => $appointment->assigned_team_id,
+                        'assigned_to' => $appointment->assigned_to,
+                        'edited_by' => $appointment->edited_by,
+                    ]);
+                }
+
+                $this->notificationService->notifyAppointmentUpdated($appointment, auth()->user());
+
+                $updated++;
+            }
+        });
+
+        return redirect()
+            ->route('appointment.appointments.assigned')
+            ->with('success', "Bulk-assigned {$updated} appointment(s).");
     }
 
     /**

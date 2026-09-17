@@ -2,6 +2,7 @@
 
 namespace Modules\Appointment\Exports;
 
+use App\Traits\BucketsTicketAge;
 use App\Traits\SanitizesExcelOutput;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\FromCollection;
@@ -13,6 +14,7 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 class AppointmentReportExport implements FromCollection, ShouldAutoSize, WithHeadings, WithMapping, WithStyles
 {
+    use BucketsTicketAge;
     use SanitizesExcelOutput;
 
     protected $startDate;
@@ -44,6 +46,10 @@ class AppointmentReportExport implements FromCollection, ShouldAutoSize, WithHea
                 return $this->getAssignedTeamProductivityData();
             case 'final_reason':
                 return $this->getFinalReasonData();
+            case 'region':
+                return $this->getRegionData();
+            case 'open_tickets':
+                return $this->getOpenTicketsData();
             default:
                 return $this->getAppointmentsData();
         }
@@ -101,6 +107,29 @@ class AppointmentReportExport implements FromCollection, ShouldAutoSize, WithHea
                     'SLA Compliance %',
                     'Avg Resolution Time (hrs)',
                 ];
+            case 'region':
+                return [
+                    'Region',
+                    'Ticket ID',
+                    'Account Number',
+                    'Status',
+                    'SLA Status',
+                    'Time Since Raised',
+                    'Feedback',
+                    'Final Reason',
+                    'Created Date',
+                ];
+            case 'open_tickets':
+                return [
+                    'Ticket ID',
+                    'Account Number',
+                    'Status',
+                    'OLT',
+                    'Sub Category',
+                    'Team',
+                    'Time Since Raised',
+                    'Created Date',
+                ];
             default:
                 return [
                     'ID',
@@ -157,6 +186,29 @@ class AppointmentReportExport implements FromCollection, ShouldAutoSize, WithHea
                     $row->closed_within_sla,
                     $row->sla_compliance_percentage.'%',
                     $row->avg_resolution_time ?? 'N/A',
+                ];
+            case 'region':
+                return [
+                    $this->sanitizeExcelValue($row->region_name ?? 'Unassigned'),
+                    $row->appointment_ticket_id ?? 'N/A',
+                    $this->sanitizeExcelValue($row->account_number ?? 'N/A'),
+                    $row->status,
+                    $row->sla_status,
+                    $row->age_bucket,
+                    $this->sanitizeExcelValue($row->feedback ?? 'N/A'),
+                    $this->sanitizeExcelValue($row->final_reason_name ?? 'N/A'),
+                    $row->created_at,
+                ];
+            case 'open_tickets':
+                return [
+                    $row->appointment_ticket_id ?? 'N/A',
+                    $this->sanitizeExcelValue($row->account_number ?? 'N/A'),
+                    $row->status,
+                    $this->sanitizeExcelValue($row->olt_name),
+                    $this->sanitizeExcelValue($row->sub_category_name),
+                    $this->sanitizeExcelValue($row->team_name),
+                    $row->age_bucket,
+                    $row->created_at,
                 ];
             default:
                 $resolutionTime = null;
@@ -352,6 +404,93 @@ class AppointmentReportExport implements FromCollection, ShouldAutoSize, WithHea
         }
 
         return $data;
+    }
+
+    /**
+     * Row-level export for the region report — mirrors the SLA/feedback
+     * computation in ReportsController::regionReport() exactly, since the
+     * export needs the same per-appointment breakdown, not an aggregate.
+     */
+    private function getRegionData()
+    {
+        $closedStatuses = ['Completed', 'Closed', 'Scheduled-Closed'];
+
+        return DB::table('appointments')
+            ->leftJoin('regions', 'appointments.region_id', '=', 'regions.id')
+            ->leftJoin('appointment_final_reasons', 'appointments.final_reason_id', '=', 'appointment_final_reasons.id')
+            ->select(
+                'appointments.appointment_ticket_id',
+                'appointments.account_number',
+                'appointments.status',
+                'appointments.comment',
+                'appointments.dispatch_update',
+                'appointments.infra_feedback',
+                'appointments.design_feedback',
+                'appointments.created_at',
+                'appointments.completed_date',
+                'regions.name as region_name',
+                'appointment_final_reasons.final_reason_name'
+            )
+            ->whereBetween('appointments.created_at', [$this->startDate, $this->endDate])
+            ->orderBy('regions.name')
+            ->orderByDesc('appointments.created_at')
+            ->get()
+            ->map(function ($row) use ($closedStatuses) {
+                $isClosed = in_array($row->status, $closedStatuses);
+                $created = \Carbon\Carbon::parse($row->created_at);
+
+                if ($isClosed && $row->completed_date) {
+                    $hours = $created->diffInHours(\Carbon\Carbon::parse($row->completed_date));
+                    $row->sla_status = $hours <= 2 ? 'Within SLA' : 'Breached';
+                } elseif ($isClosed) {
+                    $hours = $created->diffInHours(now());
+                    $row->sla_status = 'Unknown';
+                } else {
+                    $hours = $created->diffInHours(now());
+                    $row->sla_status = $hours <= 2 ? 'Within SLA (pending)' : 'Overdue';
+                }
+
+                $row->age_bucket = $this->ageBucketLabel($hours);
+                $row->feedback = $row->comment ?: ($row->dispatch_update ?: ($row->infra_feedback ?: $row->design_feedback));
+
+                return $row;
+            });
+    }
+
+    /**
+     * Row-level export for the Open Tickets report — mirrors
+     * ReportsController::openTicketsReport()'s $tickets query exactly.
+     */
+    private function getOpenTicketsData()
+    {
+        $closedStatuses = ['Completed', 'Closed', 'Scheduled-Closed'];
+
+        return DB::table('appointments')
+            ->leftJoin('olts', 'appointments.olt_id', '=', 'olts.id')
+            ->leftJoin('subcategories', 'appointments.sub_category_id', '=', 'subcategories.id')
+            ->leftJoin('operational_teams', 'appointments.assigned_team_id', '=', 'operational_teams.id')
+            ->select(
+                'appointments.appointment_ticket_id',
+                'appointments.account_number',
+                'appointments.status',
+                'appointments.created_at',
+                'olts.name as olt_name',
+                'subcategories.sub_category_name',
+                'operational_teams.team_name'
+            )
+            ->whereBetween('appointments.created_at', [$this->startDate, $this->endDate])
+            ->whereNotIn('appointments.status', $closedStatuses)
+            ->orderByDesc('appointments.created_at')
+            ->get()
+            ->map(function ($row) {
+                $hours = \Carbon\Carbon::parse($row->created_at)->diffInHours(now());
+                $row->age_bucket = $this->ageBucketLabel($hours);
+                $row->olt_name = $row->olt_name ?? 'Unassigned';
+                $row->sub_category_name = $row->sub_category_name ?? 'Uncategorized';
+                $row->team_name = $row->team_name ?? 'Unassigned';
+
+                return $row;
+            });
     }
 
     private function getAppointmentsData()

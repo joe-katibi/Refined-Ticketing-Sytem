@@ -143,6 +143,54 @@ $configData = Helper::appClasses();
                             </div>
                         </div>
 
+                        <!-- Region Report Card -->
+                        <div class="col-md-4 mb-4">
+                            <div class="card border-dark h-100">
+                                <div class="card-header bg-dark text-white">
+                                    <h5 class="card-title mb-0">
+                                        <i class="fas fa-map-marker-alt me-2"></i>
+                                        Region Report
+                                    </h5>
+                                </div>
+                                <div class="card-body d-flex flex-column">
+                                    <p class="card-text flex-grow-1">
+                                        Per-region breakdown of appointments: SLA status, feedback on why
+                                        a ticket is still pending, and final reason for closed tickets.
+                                    </p>
+                                    <div class="mt-auto">
+                                        <a href="{{ route('appointment.reports.region') }}" class="btn btn-dark btn-xs">
+                                            <i class="fas fa-map-marked-alt me-1"></i>
+                                            View Region Report
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Open Tickets Report Card -->
+                        <div class="col-md-4 mb-4">
+                            <div class="card border-warning h-100">
+                                <div class="card-header bg-warning text-dark">
+                                    <h5 class="card-title mb-0">
+                                        <i class="fas fa-hourglass-half me-2"></i>
+                                        Open Tickets
+                                    </h5>
+                                </div>
+                                <div class="card-body d-flex flex-column">
+                                    <p class="card-text flex-grow-1">
+                                        Still-open appointments broken down by OLT, sub category,
+                                        and team, with how long each has been open.
+                                    </p>
+                                    <div class="mt-auto">
+                                        <a href="{{ route('appointment.reports.open-tickets') }}" class="btn btn-warning btn-xs">
+                                            <i class="fas fa-list-ul me-1"></i>
+                                            View Open Tickets Report
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Excel Export Card -->
                         <div class="col-md-4 mb-4">
                             <div class="card border-secondary h-100">
@@ -253,6 +301,8 @@ $configData = Helper::appClasses();
                                 <option value="sub_team_productivity">Sub Team Productivity</option>
                                 <option value="assigned_team_productivity">Individual Productivity</option>
                                 <option value="final_reason">Final Reason Analysis</option>
+                                <option value="region">Region Report</option>
+                                <option value="open_tickets">Open Tickets Report</option>
                             </select>
                         </div>
                     </div>

@@ -32,98 +32,120 @@ $configData = Helper::appClasses();
     <div class="tab-content mt-3">
         <!-- In-House Tab -->
         <div class="tab-pane fade show active" id="tab-inhouse">
-            <div class="table-responsive">
-                <table class="table table-bordered" id="datatable-inhouse">
-                    <thead>
-                        <tr>
-                            <th>Ticket ID</th>
-                            <th>Account Number</th>
-                            <th>Type</th>
-                            <th>Sub Type</th>
-                            <th>Team Type</th>
-                            <th>Sub Team Type</th>
-                            <th>Priority</th>
-                            <th>Status</th>
-                            <th>Scheduled Date</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($inhouseAppointments as $appointment)
+            <form method="POST" action="{{ route('appointment.appointments.bulk_assign') }}" class="bulk-assign-form">
+                @csrf
+                @include('appointment::appointment.partials.bulk-assign-toolbar', ['teamTypes' => $teamTypes, 'formId' => 'inhouse'])
+
+                <div class="table-responsive">
+                    <table class="table table-bordered" id="datatable-inhouse">
+                        <thead>
                             <tr>
-                                <td>{{ $appointment->appointment_ticket_id }}</td>
-                                <td>{{ $appointment->account_number }}</td>
-                                <td>{{ $appointment->type->type_name ?? 'N/A' }}</td>
-                                <td>{{ $appointment->subType->sub_type_name ?? 'N/A' }}</td>
-                                <td>{{ $appointment->teamType->type_name ?? 'N/A' }}</td>
-                                <td>{{ $appointment->subTeamType->sub_type_name ?? 'N/A' }}</td>
-                                <td>{!! $appointment->priority_badge !!}</td>
-                                <td>{!! $appointment->status_badge !!}</td>
-                                <td>
-                                    @if($appointment->scheduled_date)
-                                        {{ \Carbon\Carbon::parse($appointment->scheduled_date)->format('M d, Y') }}
-                                    @else
-                                        N/A
-                                    @endif
-                                </td>
-                                <td>
-                                    <a href="{{ route('appointment.appointments.edit_assigned', $appointment->id) }}" class="btn btn-icon btn-info btn-sm">
-                                        <i class="ti ti-edit"></i>
-                                    </a>
-                                </td>
+                                <th><input type="checkbox" class="select-all" data-form="inhouse"></th>
+                                <th>Ticket ID</th>
+                                <th>Account Number</th>
+                                <th>Type</th>
+                                <th>Sub Type</th>
+                                <th>Team Type</th>
+                                <th>Sub Team Type</th>
+                                <th>Priority</th>
+                                <th>Status</th>
+                                <th>Scheduled Date</th>
+                                <th>Actions</th>
                             </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
+                        </thead>
+                        <tbody>
+                            @foreach($inhouseAppointments as $appointment)
+                                <tr>
+                                    <td>
+                                        @if($appointment->status === 'scheduled-assigned-team')
+                                            <input type="checkbox" name="appointment_ids[]" value="{{ $appointment->id }}" class="row-check" data-form="inhouse">
+                                        @endif
+                                    </td>
+                                    <td>{{ $appointment->appointment_ticket_id }}</td>
+                                    <td>{{ $appointment->account_number }}</td>
+                                    <td>{{ $appointment->type->type_name ?? 'N/A' }}</td>
+                                    <td>{{ $appointment->subType->sub_type_name ?? 'N/A' }}</td>
+                                    <td>{{ $appointment->teamType->type_name ?? 'N/A' }}</td>
+                                    <td>{{ $appointment->subTeamType->sub_type_name ?? 'N/A' }}</td>
+                                    <td>{!! $appointment->priority_badge !!}</td>
+                                    <td>{!! $appointment->status_badge !!}</td>
+                                    <td>
+                                        @if($appointment->scheduled_date)
+                                            {{ \Carbon\Carbon::parse($appointment->scheduled_date)->format('M d, Y') }}
+                                        @else
+                                            N/A
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <a href="{{ route('appointment.appointments.edit_assigned', $appointment->id) }}" class="btn btn-icon btn-info btn-sm">
+                                            <i class="ti ti-edit"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </form>
         </div>
 
         <!-- Outsource Partner Tab -->
         <div class="tab-pane fade" id="tab-outsource">
-            <div class="table-responsive">
-                <table class="table table-bordered" id="datatable-outsource">
-                    <thead>
-                        <tr>
-                            <th>Ticket ID</th>
-                            <th>Account Number</th>
-                            <th>Type</th>
-                            <th>Sub Type</th>
-                            <th>Team Type</th>
-                            <th>Sub Team Type</th>
-                            <th>Priority</th>
-                            <th>Status</th>
-                            <th>Scheduled Date</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($outsourceAppointments as $appointment)
+            <form method="POST" action="{{ route('appointment.appointments.bulk_assign') }}" class="bulk-assign-form">
+                @csrf
+                @include('appointment::appointment.partials.bulk-assign-toolbar', ['teamTypes' => $teamTypes, 'formId' => 'outsource'])
+
+                <div class="table-responsive">
+                    <table class="table table-bordered" id="datatable-outsource">
+                        <thead>
                             <tr>
-                                <td>{{ $appointment->appointment_ticket_id }}</td>
-                                <td>{{ $appointment->account_number }}</td>
-                                <td>{{ $appointment->type->type_name ?? 'N/A' }}</td>
-                                <td>{{ $appointment->subType->sub_type_name ?? 'N/A' }}</td>
-                                <td>{{ $appointment->teamType->type_name ?? 'N/A' }}</td>
-                                <td>{{ $appointment->subTeamType->sub_type_name ?? 'N/A' }}</td>
-                                <td>{!! $appointment->priority_badge !!}</td>
-                                <td>{!! $appointment->status_badge !!}</td>
-                                <td>
-                                    @if($appointment->scheduled_date)
-                                        {{ \Carbon\Carbon::parse($appointment->scheduled_date)->format('M d, Y') }}
-                                    @else
-                                        N/A
-                                    @endif
-                                </td>
-                                <td>
-                                    <a href="{{ route('appointment.appointments.edit_assigned', $appointment->id) }}" class="btn btn-icon btn-info btn-sm">
-                                        <i class="ti ti-edit"></i>
-                                    </a>
-                                </td>
+                                <th><input type="checkbox" class="select-all" data-form="outsource"></th>
+                                <th>Ticket ID</th>
+                                <th>Account Number</th>
+                                <th>Type</th>
+                                <th>Sub Type</th>
+                                <th>Team Type</th>
+                                <th>Sub Team Type</th>
+                                <th>Priority</th>
+                                <th>Status</th>
+                                <th>Scheduled Date</th>
+                                <th>Actions</th>
                             </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
+                        </thead>
+                        <tbody>
+                            @foreach($outsourceAppointments as $appointment)
+                                <tr>
+                                    <td>
+                                        @if($appointment->status === 'scheduled-assigned-team')
+                                            <input type="checkbox" name="appointment_ids[]" value="{{ $appointment->id }}" class="row-check" data-form="outsource">
+                                        @endif
+                                    </td>
+                                    <td>{{ $appointment->appointment_ticket_id }}</td>
+                                    <td>{{ $appointment->account_number }}</td>
+                                    <td>{{ $appointment->type->type_name ?? 'N/A' }}</td>
+                                    <td>{{ $appointment->subType->sub_type_name ?? 'N/A' }}</td>
+                                    <td>{{ $appointment->teamType->type_name ?? 'N/A' }}</td>
+                                    <td>{{ $appointment->subTeamType->sub_type_name ?? 'N/A' }}</td>
+                                    <td>{!! $appointment->priority_badge !!}</td>
+                                    <td>{!! $appointment->status_badge !!}</td>
+                                    <td>
+                                        @if($appointment->scheduled_date)
+                                            {{ \Carbon\Carbon::parse($appointment->scheduled_date)->format('M d, Y') }}
+                                        @else
+                                            N/A
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <a href="{{ route('appointment.appointments.edit_assigned', $appointment->id) }}" class="btn btn-icon btn-info btn-sm">
+                                            <i class="ti ti-edit"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -141,15 +163,54 @@ $configData = Helper::appClasses();
             // Initialize DataTable for In-House
             $('#datatable-inhouse').DataTable({
                 responsive: true,
-                order: [[7, 'asc']] // Sort by scheduled date by default
+                order: [[8, 'asc']], // Sort by scheduled date by default
+                columnDefs: [{ orderable: false, targets: 0 }] // checkbox column
             });
 
             // Initialize DataTable for Outsource Partner
             $('#datatable-outsource').DataTable({
                 responsive: true,
-                order: [[7, 'asc']] // Sort by scheduled date by default
+                order: [[8, 'asc']], // Sort by scheduled date by default
+                columnDefs: [{ orderable: false, targets: 0 }]
+            });
+
+            function updateSelectedCount(form) {
+                var count = $('.row-check[data-form="' + form + '"]:checked').length;
+                $('.selected-count[data-form="' + form + '"]').text(count);
+            }
+
+            // Select-all toggles only the checkboxes belonging to its own
+            // form — DataTables re-parents rows into its own wrapper, but
+            // the data-form attribute keeps the two tabs' selections from
+            // ever bleeding into each other.
+            $(document).on('change', '.select-all', function() {
+                var form = $(this).data('form');
+                $('.row-check[data-form="' + form + '"]').prop('checked', this.checked);
+                updateSelectedCount(form);
+            });
+
+            $(document).on('change', '.row-check', function() {
+                updateSelectedCount($(this).data('form'));
+            });
+
+            // Submitting with nothing selected is a no-op worth catching
+            // client-side rather than round-tripping to the server to be
+            // told the same thing.
+            $('.bulk-assign-form').on('submit', function(e) {
+                var $form = $(this);
+                var checked = $form.find('.row-check:checked').length;
+                if (checked === 0) {
+                    e.preventDefault();
+                    alert('Select at least one appointment to bulk-assign.');
+                    return false;
+                }
+                if (!$form.find('select[name="team_type_id"]').val() || !$form.find('select[name="sub_team_type_id"]').val()) {
+                    e.preventDefault();
+                    alert('Choose a Team and Sub Team before bulk-assigning.');
+                    return false;
+                }
             });
         });
     </script>
+    @include('appointment::appointment.partials.bulk-assign-cascade-script')
 @endsection
-

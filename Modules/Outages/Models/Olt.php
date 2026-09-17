@@ -2,12 +2,13 @@
 
 namespace Modules\Outages\Models;
 
+use App\Models\Region;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use App\Models\User;
 
 class Olt extends Model
 {
@@ -19,11 +20,12 @@ class Olt extends Model
         'model',
         'ip_address',
         'location',
+        'region_id',
         'total_slots',
         'software_version',
         'created_by',
         'edited_by',
-        'status'
+        'status',
     ];
 
     protected $casts = [
@@ -63,6 +65,14 @@ class Olt extends Model
     }
 
     /**
+     * Get the region this OLT is assigned to.
+     */
+    public function region(): BelongsTo
+    {
+        return $this->belongsTo(Region::class);
+    }
+
+    /**
      * Scope to get active OLTs.
      */
     public function scopeActive($query)
@@ -75,7 +85,7 @@ class Olt extends Model
      */
     public function getStatusBadgeClassAttribute(): string
     {
-        return match($this->status) {
+        return match ($this->status) {
             'Active' => 'bg-success',
             'Inactive' => 'bg-secondary',
             'Maintenance' => 'bg-warning',
@@ -89,7 +99,7 @@ class Olt extends Model
      */
     public function getVendorBadgeClassAttribute(): string
     {
-        return match(strtolower($this->vendor ?? '')) {
+        return match (strtolower($this->vendor ?? '')) {
             'huawei' => 'bg-danger',
             'zte' => 'bg-primary',
             'fiberhome' => 'bg-success',

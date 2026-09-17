@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Modules\Appointment\Http\Controllers\AppointmentController;
 use Modules\Appointment\Http\Controllers\AppointmentFinalReasonController;
 use Modules\Appointment\Http\Controllers\AppointmentHistoryController;
+use Modules\Appointment\Http\Controllers\AppointmentRegionController;
 use Modules\Appointment\Http\Controllers\AppointmentStatusController;
 use Modules\Appointment\Http\Controllers\AppointmentTypeController;
 use Modules\Appointment\Http\Controllers\DashboardController;
@@ -65,6 +66,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::put('/assigned/{appointment}', [AppointmentController::class, 'updateAssigned'])
                 ->name('update_assigned')
                 ->middleware('permission:view-appointment-edit|view-my-appointment-edit');
+            // Same mutation as the single-appointment edit()/update() form's
+            // Team Type/Sub Team Type/Technician/Assign Team fields, applied
+            // to many appointments at once — gated the same way that form is.
+            Route::post('/bulk-assign', [AppointmentController::class, 'bulkAssign'])
+                ->name('bulk_assign')
+                ->middleware('permission:view-appointment-edit');
             Route::get('/create', [AppointmentController::class, 'create'])
                 ->name('create')
                 ->middleware('permission:view-appointment-create');
@@ -148,6 +155,30 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 Route::delete('/', [AppointmentFinalReasonController::class, 'destroy'])
                     ->name('destroy')
                     ->middleware('permission:view-final-reasons-appointment');
+            });
+        });
+
+    // Regions
+    Route::prefix('appointment-regions')
+        ->name('appointment.regions.')
+        ->group(function () {
+            Route::get('/', [AppointmentRegionController::class, 'index'])
+                ->name('index')
+                ->middleware('permission:view-appointment-regions-menu');
+            Route::get('/create', [AppointmentRegionController::class, 'create'])
+                ->name('create')
+                ->middleware('permission:view-appointment-regions-create');
+            Route::post('/', [AppointmentRegionController::class, 'store'])
+                ->name('store')
+                ->middleware('permission:view-appointment-regions-create');
+
+            Route::prefix('{region}')->group(function () {
+                Route::get('/edit', [AppointmentRegionController::class, 'edit'])
+                    ->name('edit')
+                    ->middleware('permission:view-appointment-regions-edit');
+                Route::put('/', [AppointmentRegionController::class, 'update'])
+                    ->name('update')
+                    ->middleware('permission:view-appointment-regions-edit');
             });
         });
 
@@ -265,6 +296,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 ->middleware('permission:view-reports-appointment');
             Route::get('/final-reason', [ReportsController::class, 'finalReasonReport'])
                 ->name('final-reason')
+                ->middleware('permission:view-reports-appointment');
+            Route::get('/region', [ReportsController::class, 'regionReport'])
+                ->name('region')
+                ->middleware('permission:view-reports-appointment');
+            Route::get('/open-tickets', [ReportsController::class, 'openTicketsReport'])
+                ->name('open-tickets')
                 ->middleware('permission:view-reports-appointment');
             Route::get('/export-excel', [ReportsController::class, 'exportExcel'])
                 ->name('export-excel')

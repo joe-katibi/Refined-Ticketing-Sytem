@@ -149,6 +149,11 @@ class Appointment extends Model
         return $this->belongsTo(\App\Models\Team::class, 'escalated_team_id');
     }
 
+    public function region(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Region::class, 'region_id');
+    }
+
     public function closer(): BelongsTo
     {
         return $this->belongsTo(\App\Models\User::class, 'closed_by');

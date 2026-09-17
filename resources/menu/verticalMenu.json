@@ -228,6 +228,12 @@
           "permission": "view-appointment-final-reasons-menu"
         },
         {
+          "name": "Regions",
+          "url": "/appointment-regions",
+          "slug": "appointment.regions.index",
+          "permission": "view-appointment-regions-menu"
+        },
+        {
           "name": "Notifications",
           "url": "/appointment-notifications",
           "slug": "appointment.notifications.index",
