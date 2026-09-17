@@ -2,19 +2,23 @@
 
 namespace Modules\Escalations\Exports;
 
+use App\Traits\SanitizesExcelOutput;
+use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithStyles;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
-use Modules\Escalations\Entities\Escalation;
-use Illuminate\Support\Facades\DB;
 
-class EscalationReportExport implements FromCollection, WithHeadings, WithMapping, WithStyles, ShouldAutoSize
+class EscalationReportExport implements FromCollection, ShouldAutoSize, WithHeadings, WithMapping, WithStyles
 {
+    use SanitizesExcelOutput;
+
     protected $dateFrom;
+
     protected $dateTo;
+
     protected $reportType;
 
     public function __construct($dateFrom, $dateTo, $reportType = 'escalations')
@@ -51,7 +55,7 @@ class EscalationReportExport implements FromCollection, WithHeadings, WithMappin
                     'Closed Escalations',
                     'Within SLA (4hrs)',
                     'Outside SLA',
-                    'SLA Compliance %'
+                    'SLA Compliance %',
                 ];
             case 'productivity':
                 return [
@@ -60,7 +64,7 @@ class EscalationReportExport implements FromCollection, WithHeadings, WithMappin
                     'Within SLA',
                     'Outside SLA',
                     'SLA Compliance %',
-                    'Avg Resolution Time (hrs)'
+                    'Avg Resolution Time (hrs)',
                 ];
             case 'sub_category':
                 return [
@@ -70,7 +74,7 @@ class EscalationReportExport implements FromCollection, WithHeadings, WithMappin
                     'Closed Escalations',
                     'Within SLA',
                     'SLA Compliance %',
-                    'Avg Resolution Time (hrs)'
+                    'Avg Resolution Time (hrs)',
                 ];
             default:
                 return [
@@ -89,7 +93,7 @@ class EscalationReportExport implements FromCollection, WithHeadings, WithMappin
                     'Closed Date',
                     'Closed Time',
                     'Resolution Time (hrs)',
-                    'Within SLA'
+                    'Within SLA',
                 ];
         }
     }
@@ -104,33 +108,33 @@ class EscalationReportExport implements FromCollection, WithHeadings, WithMappin
                     $row->closed_escalations,
                     $row->closed_within_sla,
                     $row->closed_outside_sla,
-                    $row->sla_compliance_percentage . '%'
+                    $row->sla_compliance_percentage.'%',
                 ];
             case 'productivity':
                 return [
-                    $row->name,
+                    $this->sanitizeExcelValue($row->name),
                     $row->total_closed,
                     $row->closed_within_sla,
                     $row->closed_outside_sla,
-                    $row->sla_compliance_percentage . '%',
-                    $row->avg_resolution_time ?? 'N/A'
+                    $row->sla_compliance_percentage.'%',
+                    $row->avg_resolution_time ?? 'N/A',
                 ];
             case 'sub_category':
                 return [
-                    $row->category_name ?? 'N/A',
-                    $row->subcategory_name ?? 'N/A',
+                    $this->sanitizeExcelValue($row->category_name ?? 'N/A'),
+                    $this->sanitizeExcelValue($row->subcategory_name ?? 'N/A'),
                     $row->total_escalations,
                     $row->closed_escalations,
                     $row->closed_within_sla,
-                    $row->sla_compliance_percentage . '%',
-                    $row->avg_resolution_time ?? 'N/A'
+                    $row->sla_compliance_percentage.'%',
+                    $row->avg_resolution_time ?? 'N/A',
                 ];
             default:
                 $resolutionTime = null;
                 $withinSla = 'N/A';
                 $closedDate = 'N/A';
                 $closedTime = 'N/A';
-                
+
                 if ($row->closed_at) {
                     $created = \Carbon\Carbon::parse($row->created_at);
                     $closed = \Carbon\Carbon::parse($row->closed_at);
@@ -144,19 +148,19 @@ class EscalationReportExport implements FromCollection, WithHeadings, WithMappin
                     $row->id,
                     $row->escalation_id ?? 'N/A',
                     $row->ticket_id ?? 'N/A',
-                    $row->account_number ?? 'N/A',
-                    $row->description ?? 'N/A',
-                    $row->category_name ?? 'N/A',
-                    $row->sub_category_name ?? 'N/A',
+                    $this->sanitizeExcelValue($row->account_number ?? 'N/A'),
+                    $this->sanitizeExcelValue($row->description ?? 'N/A'),
+                    $this->sanitizeExcelValue($row->category_name ?? 'N/A'),
+                    $this->sanitizeExcelValue($row->sub_category_name ?? 'N/A'),
                     $row->status,
                     $row->priority ?? 'N/A',
-                    $row->sub_department_name ?? 'N/A',
-                    $row->closed_by_user ?? 'N/A',
+                    $this->sanitizeExcelValue($row->sub_department_name ?? 'N/A'),
+                    $this->sanitizeExcelValue($row->closed_by_user ?? 'N/A'),
                     $row->created_at,
                     $closedDate,
                     $closedTime,
                     $resolutionTime ?? 'N/A',
-                    $withinSla
+                    $withinSla,
                 ];
         }
     }
@@ -183,9 +187,10 @@ class EscalationReportExport implements FromCollection, WithHeadings, WithMappin
             ->orderBy('date')
             ->get()
             ->map(function ($item) {
-                $item->sla_compliance_percentage = $item->closed_escalations > 0 
-                    ? round(($item->closed_within_sla / $item->closed_escalations) * 100, 2) 
+                $item->sla_compliance_percentage = $item->closed_escalations > 0
+                    ? round(($item->closed_within_sla / $item->closed_escalations) * 100, 2)
                     : 0;
+
                 return $item;
             });
     }
@@ -209,8 +214,8 @@ class EscalationReportExport implements FromCollection, WithHeadings, WithMappin
             ->get();
 
         foreach ($data as $item) {
-            $item->sla_compliance_percentage = $item->total_closed > 0 
-                ? round(($item->closed_within_sla / $item->total_closed) * 100, 2) 
+            $item->sla_compliance_percentage = $item->total_closed > 0
+                ? round(($item->closed_within_sla / $item->total_closed) * 100, 2)
                 : 0;
         }
 
@@ -236,8 +241,8 @@ class EscalationReportExport implements FromCollection, WithHeadings, WithMappin
             ->get();
 
         foreach ($data as $item) {
-            $item->sla_compliance_percentage = $item->closed_escalations > 0 
-                ? round(($item->closed_within_sla / $item->closed_escalations) * 100, 2) 
+            $item->sla_compliance_percentage = $item->closed_escalations > 0
+                ? round(($item->closed_within_sla / $item->closed_escalations) * 100, 2)
                 : 0;
         }
 

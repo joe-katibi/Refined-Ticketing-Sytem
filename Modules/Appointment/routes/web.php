@@ -41,8 +41,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('appointments')
         ->name('appointment.appointments.')
         ->group(function () {
-            Route::get('/appointment', [AppointmentController::class, 'index'])->name('index');
-            Route::get('/list', [AppointmentController::class, 'list'])->name('list');
+            Route::get('/appointment', [AppointmentController::class, 'index'])
+                ->name('index')
+                ->middleware('permission:view-appointments-menu');
+            Route::get('/list', [AppointmentController::class, 'list'])
+                ->name('list')
+                ->middleware('permission:view-appointment-list-menu');
             Route::get('/assigned', [AppointmentController::class, 'assigned'])
                 ->name('assigned')
                 ->middleware('permission:view-assigned-appointments-menu');
@@ -78,10 +82,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/get-slots/{olt_id}', [AppointmentController::class, 'getSlots'])->name('get-slots');
 
             // Appointment Histories
-            Route::get('/histories', [AppointmentHistoryController::class, 'index'])->name('histories.index');
+            Route::get('/histories', [AppointmentHistoryController::class, 'index'])
+                ->name('histories.index')
+                ->middleware('permission:view-appointment-history');
 
             // Single appointment history
-            Route::get('{appointment}/histories', [AppointmentHistoryController::class, 'show'])->name('histories.show');
+            Route::get('{appointment}/histories', [AppointmentHistoryController::class, 'show'])
+                ->name('histories.show')
+                ->middleware('permission:view-appointment-history');
 
             // Single appointment routes
             Route::prefix('{appointment}')->whereNumber('appointment')->group(function () {

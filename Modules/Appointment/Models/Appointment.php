@@ -197,9 +197,13 @@ class Appointment extends Model
         $statusModel = AppointmentStatus::where('name', $this->status)->first();
 
         if ($statusModel) {
-            $badgeClass = $statusModel->badge_class ?: 'bg-info';
-            $color = $statusModel->color ?: '#3498db';
-            $displayName = $statusModel->display_name ?: $this->status;
+            // badge_class/color/display_name are admin-editable free text
+            // (AppointmentStatusController) with no format whitelist, and this
+            // string is echoed unescaped via {!! !!} in several views — escape
+            // here so a status record can't carry a stored-XSS payload.
+            $badgeClass = e($statusModel->badge_class ?: 'bg-info');
+            $color = e($statusModel->color ?: '#3498db');
+            $displayName = e($statusModel->display_name ?: $this->status);
 
             return '<span class="badge '.$badgeClass.'" style="background-color: '.$color.' !important;">'.$displayName.'</span>';
         }
@@ -208,7 +212,7 @@ class Appointment extends Model
         return match ($this->status) {
             'Escalated-Open' => '<span class="badge bg-warning">Escalated</span>',
             'Escalated-Closed' => '<span class="badge bg-success">Closed</span>',
-            default => '<span class="badge bg-info">'.$this->status.'</span>',
+            default => '<span class="badge bg-info">'.e($this->status).'</span>',
         };
     }
 

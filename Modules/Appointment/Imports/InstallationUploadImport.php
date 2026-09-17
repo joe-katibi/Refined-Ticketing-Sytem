@@ -74,7 +74,7 @@ class InstallationUploadImport implements ToCollection, WithHeadingRow
             }
 
             try {
-                DB::transaction(fn () => $this->processRow($row));
+                $this->processRow($row);
                 $this->processedRows++;
             } catch (\Throwable $e) {
                 $this->errors[] = "Row {$rowNumber}: ".$e->getMessage();
@@ -106,8 +106,50 @@ class InstallationUploadImport implements ToCollection, WithHeadingRow
         $olt = $oltName !== '' ? Olt::where('name', $oltName)->first() : null;
 
         $prefix = $this->installationType->code_prefix ?: 'INS';
+        // Generated BEFORE the transaction below on purpose: SequenceNumberService::next()
+        // commits its own increment immediately. If it were called inside the
+        // transaction that also creates the Appointment, a later failure in
+        // that same transaction (e.g. a bad FK on AppointmentHistory) would
+        // roll back the increment too — silently "returning" this ticket
+        // number for the NEXT row to hand out again, producing two different
+        // appointments sharing one ticket ID with no error for the reuse.
         $ticketNumber = \App\Services\SequenceNumberService::next('appointment:'.$prefix);
 
+        $appointment = DB::transaction(fn () => $this->createAppointmentRecord(
+            $row, $accountNumber, $customerName, $contactNumber, $alternativeContactNumber,
+            $oltName, $subType, $olt, $prefix, $ticketNumber, $userId
+        ));
+
+        if ($customerName !== '' || $contactNumber !== '' || $alternativeContactNumber !== '') {
+            $customer = Customer::firstOrNew(['account_number' => $accountNumber]);
+            $isNewCustomer = ! $customer->exists;
+            $customer->name = $this->stringOrKeep($customerName, $customer->name);
+            $customer->mobile_number = $this->stringOrKeep($contactNumber, $customer->mobile_number);
+            $customer->alternative_number = $this->stringOrKeep($alternativeContactNumber, $customer->alternative_number);
+            $customer->address = $this->stringOrKeep($row->get('road_name'), $customer->address);
+            if ($isNewCustomer) {
+                $customer->status = 'Active';
+                $customer->created_by = $userId;
+            } else {
+                $customer->edited_by = $userId;
+            }
+            $customer->save();
+        }
+    }
+
+    private function createAppointmentRecord(
+        Collection $row,
+        string $accountNumber,
+        string $customerName,
+        string $contactNumber,
+        string $alternativeContactNumber,
+        string $oltName,
+        ?SubAppointmentType $subType,
+        ?Olt $olt,
+        string $prefix,
+        int $ticketNumber,
+        $userId
+    ): Appointment {
         $appointment = Appointment::create([
             'account_number' => $accountNumber,
             'appointment_ticket_id' => $prefix.'-'.$ticketNumber,
@@ -161,21 +203,7 @@ class InstallationUploadImport implements ToCollection, WithHeadingRow
             'olt_id' => $appointment->olt_id,
         ]);
 
-        if ($customerName !== '' || $contactNumber !== '' || $alternativeContactNumber !== '') {
-            $customer = Customer::firstOrNew(['account_number' => $accountNumber]);
-            $isNewCustomer = ! $customer->exists;
-            $customer->name = $this->stringOrKeep($customerName, $customer->name);
-            $customer->mobile_number = $this->stringOrKeep($contactNumber, $customer->mobile_number);
-            $customer->alternative_number = $this->stringOrKeep($alternativeContactNumber, $customer->alternative_number);
-            $customer->address = $this->stringOrKeep($row->get('road_name'), $customer->address);
-            if ($isNewCustomer) {
-                $customer->status = 'Active';
-                $customer->created_by = $userId;
-            } else {
-                $customer->edited_by = $userId;
-            }
-            $customer->save();
-        }
+        return $appointment;
     }
 
     private function resolveSubType($value): ?SubAppointmentType

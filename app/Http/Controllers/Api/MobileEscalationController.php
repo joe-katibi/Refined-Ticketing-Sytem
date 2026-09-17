@@ -46,7 +46,7 @@ class MobileEscalationController extends Controller
                 'last_page' => $escalations->lastPage(),
                 'per_page' => $escalations->perPage(),
                 'total' => $escalations->total(),
-            ]
+            ],
         ]);
     }
 
@@ -67,10 +67,12 @@ class MobileEscalationController extends Controller
             'priority' => 'required|in:Low,Medium,High',
         ]);
 
-        $escalation = \Illuminate\Support\Facades\DB::transaction(function () use ($validated, $user) {
-            $ticketNumber = \App\Services\SequenceNumberService::next('escalation:ESC');
-            $ticketId = 'ESC-' . $ticketNumber;
+        // Generated BEFORE the transaction below on purpose — see the identical
+        // fix/comment in Modules\Escalations\Http\Controllers\ListController::store().
+        $ticketNumber = \App\Services\SequenceNumberService::next('escalation:ESC');
+        $ticketId = 'ESC-'.$ticketNumber;
 
+        $escalation = \Illuminate\Support\Facades\DB::transaction(function () use ($validated, $user, $ticketId) {
             $escalation = Escalation::create(array_merge($validated, [
                 'ticket_id' => $ticketId,
                 'status' => 'Escalated-Open',
@@ -92,7 +94,7 @@ class MobileEscalationController extends Controller
                 'action_by' => $user->id,
             ]);
 
-            (new \App\Services\Fifo\FifoQueueService())->enqueue(
+            (new \App\Services\Fifo\FifoQueueService)->enqueue(
                 'escalation',
                 'escalation',
                 $escalation->id,
@@ -120,7 +122,7 @@ class MobileEscalationController extends Controller
             ->findOrFail($id);
 
         return response()->json([
-            'escalation' => $escalation
+            'escalation' => $escalation,
         ]);
     }
 
@@ -139,7 +141,7 @@ class MobileEscalationController extends Controller
             ->get();
 
         return response()->json([
-            'history' => $history
+            'history' => $history,
         ]);
     }
 
@@ -155,7 +157,7 @@ class MobileEscalationController extends Controller
             ->get();
 
         return response()->json([
-            'departments' => $departments
+            'departments' => $departments,
         ]);
     }
 
@@ -172,7 +174,7 @@ class MobileEscalationController extends Controller
             ->get();
 
         return response()->json([
-            'sub_departments' => $subDepartments
+            'sub_departments' => $subDepartments,
         ]);
     }
 
@@ -191,7 +193,7 @@ class MobileEscalationController extends Controller
             ->get();
 
         return response()->json([
-            'categories' => $categories
+            'categories' => $categories,
         ]);
     }
 
@@ -208,7 +210,7 @@ class MobileEscalationController extends Controller
             ->get();
 
         return response()->json([
-            'sub_categories' => $subCategories
+            'sub_categories' => $subCategories,
         ]);
     }
 
@@ -235,7 +237,7 @@ class MobileEscalationController extends Controller
                 'open_escalations' => $openEscalations,
                 'closed_escalations' => $closedEscalations,
                 'closure_rate' => $closureRate,
-            ]
+            ],
         ]);
     }
 }

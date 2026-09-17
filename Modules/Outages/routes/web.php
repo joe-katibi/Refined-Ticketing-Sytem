@@ -84,15 +84,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/root-cause', [OutageReportController::class, 'rootCause'])->name('outage-reports.root-cause')->middleware('permission:view-outage-download-reports');
 
         // Individual Report Exports
-        Route::get('/sla/export', [OutageReportController::class, 'slaExport'])->name('outage-reports.sla.export');
-        Route::get('/productivity/export', [OutageReportController::class, 'productivityExport'])->name('outage-reports.productivity.export');
-        Route::get('/sla-breakdown/export', [OutageReportController::class, 'slaBreakdownExport'])->name('outage-reports.sla-breakdown.export');
-        Route::get('/trends/export', [OutageReportController::class, 'trendsExport'])->name('outage-reports.trends.export');
-        Route::get('/impact/export', [OutageReportController::class, 'impactExport'])->name('outage-reports.impact.export');
-        Route::get('/root-cause/export', [OutageReportController::class, 'rootCauseExport'])->name('outage-reports.root-cause.export');
+        Route::get('/sla/export', [OutageReportController::class, 'slaExport'])->name('outage-reports.sla.export')->middleware('permission:view-outage-download-reports');
+        Route::get('/productivity/export', [OutageReportController::class, 'productivityExport'])->name('outage-reports.productivity.export')->middleware('permission:view-outage-download-reports');
+        Route::get('/sla-breakdown/export', [OutageReportController::class, 'slaBreakdownExport'])->name('outage-reports.sla-breakdown.export')->middleware('permission:view-outage-download-reports');
+        Route::get('/trends/export', [OutageReportController::class, 'trendsExport'])->name('outage-reports.trends.export')->middleware('permission:view-outage-download-reports');
+        Route::get('/impact/export', [OutageReportController::class, 'impactExport'])->name('outage-reports.impact.export')->middleware('permission:view-outage-download-reports');
+        Route::get('/root-cause/export', [OutageReportController::class, 'rootCauseExport'])->name('outage-reports.root-cause.export')->middleware('permission:view-outage-download-reports');
 
         // Combined Export
-        Route::get('/export', [OutageReportController::class, 'export'])->name('outage-reports.export');
+        Route::get('/export', [OutageReportController::class, 'export'])->name('outage-reports.export')->middleware('permission:view-outage-download-reports');
     });
 
     // Dashboard

@@ -8033,6 +8033,7 @@ return array(
     'ZipStream\\Zip64\\ExtendedInformationExtraField' => $vendorDir . '/maennchen/zipstream-php/src/Zip64/ExtendedInformationExtraField.php',
     'ZipStream\\ZipStream' => $vendorDir . '/maennchen/zipstream-php/src/ZipStream.php',
     'ZipStream\\Zs\\ExtendedInformationExtraField' => $vendorDir . '/maennchen/zipstream-php/src/Zs/ExtendedInformationExtraField.php',
+    'database\\seeders\\PermissionsSeeder' => $baseDir . '/database/seeders/PermissionsSeeder.php',
     'setasign\\Fpdi\\FpdfTpl' => $vendorDir . '/setasign/fpdi/src/FpdfTpl.php',
     'setasign\\Fpdi\\FpdfTplTrait' => $vendorDir . '/setasign/fpdi/src/FpdfTplTrait.php',
     'setasign\\Fpdi\\FpdfTrait' => $vendorDir . '/setasign/fpdi/src/FpdfTrait.php',

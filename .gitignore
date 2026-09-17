@@ -1,3 +1,4 @@
 node_modules
 storage/logs/*.log
-storage/logs/*.log
+.env
+.env.*.bak
