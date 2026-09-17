@@ -2,9 +2,9 @@
 
 namespace Modules\Outages\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Modules\Outages\Database\Factories\OutageTicketFactory;
 
 class OutageTicket extends Model
@@ -109,7 +109,7 @@ class OutageTicket extends Model
     public function scopeActive($query)
     {
         return $query->where('status', '!=', 'Resolved')
-                    ->where('status', '!=', 'Closed');
+            ->where('status', '!=', 'Closed');
     }
 
     /**
@@ -133,7 +133,7 @@ class OutageTicket extends Model
      */
     public function isActive()
     {
-        return !in_array($this->status, ['Resolved', 'Closed']);
+        return ! in_array($this->status, ['Resolved', 'Closed']);
     }
 
     /**
@@ -146,21 +146,21 @@ class OutageTicket extends Model
 
     /**
      * Generate a new ticket number.
+     *
+     * Previously read the last matching ticket via ORDER BY with no lock or
+     * transaction — the same unsafe "read max, then +1" race the rest of
+     * the app's ticket numbering was fixed away from (see
+     * App\Services\SequenceNumberService's own doc comment). Two concurrent
+     * requests on the same day could compute the same ticket number. The
+     * scope key includes the date, so — like the old format — the counter
+     * naturally starts back at 1 each day.
      */
     public static function generateTicketNumber()
     {
-        $prefix = 'TICKET-' . date('Ymd');
-        $lastTicket = static::where('ticket_number', 'like', $prefix . '%')
-            ->orderBy('created_at', 'desc')
-            ->first();
+        $prefix = 'TICKET-'.date('Ymd');
+        $number = \App\Services\SequenceNumberService::next('outage-ticket:'.$prefix);
 
-        if ($lastTicket) {
-            $number = (int) substr($lastTicket->ticket_number, -4) + 1;
-        } else {
-            $number = 1;
-        }
-
-        return $prefix . '-' . str_pad($number, 4, '0', STR_PAD_LEFT);
+        return $prefix.'-'.str_pad($number, 4, '0', STR_PAD_LEFT);
     }
 
     /**
@@ -173,10 +173,10 @@ class OutageTicket extends Model
 
         if ($impact === 'high' && $urgency === 'high') {
             return 'Critical';
-        } elseif (($impact === 'high' && $urgency === 'medium') || 
+        } elseif (($impact === 'high' && $urgency === 'medium') ||
                  ($impact === 'medium' && $urgency === 'high')) {
             return 'High';
-        } elseif (($impact === 'high' && $urgency === 'low') || 
+        } elseif (($impact === 'high' && $urgency === 'low') ||
                  ($impact === 'medium' && $urgency === 'medium') ||
                  ($impact === 'low' && $urgency === 'high')) {
             return 'Medium';

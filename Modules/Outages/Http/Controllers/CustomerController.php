@@ -46,10 +46,11 @@ class CustomerController extends Controller
     /**
      * AJAX lookup for pages that need to attach a real customer record to
      * something else (e.g. picking a customer while creating an escalation)
-     * instead of typing a free-text account number. Deliberately not behind
-     * the olt-management permission — anyone who can reach the page doing
-     * the lookup (already auth-gated by the enclosing route group) should
-     * be able to search customers by name/account/mobile.
+     * instead of typing a free-text account number. Gated at the route
+     * level to view-create-escalation|view-olt-management-menu — the two
+     * real callers of this — rather than left open to every authenticated
+     * user, which returned customer name/mobile/address to anyone logged
+     * in regardless of role.
      */
     public function search(Request $request)
     {

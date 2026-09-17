@@ -132,7 +132,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // "customers/search" isn't shadowed by the resource's "customers/{customer}"
     // show route, which would otherwise try (and fail) to bind "search" as
     // a customer ID.
-    Route::get('customers/search', [CustomerController::class, 'search'])->name('customers.search');
+    //
+    // Gated to whoever can actually use the result — escalation creators
+    // (the account-number search on the escalation form) and OLT/customer
+    // managers — rather than every authenticated user, which the security
+    // audit flagged as unnecessary PII exposure (customer name/mobile/
+    // address returned to anyone logged in, regardless of role).
+    Route::get('customers/search', [CustomerController::class, 'search'])
+        ->name('customers.search')
+        ->middleware('permission:view-create-escalation|view-olt-management-menu');
     Route::resource('customers', CustomerController::class)->middleware('permission:view-olt-management-menu');
     Route::get('fats/{fat}/customers/create', [CustomerController::class, 'create'])->name('fats.customers.create')->middleware('permission:view-olt-management-menu');
     Route::post('fats/{fat}/customers', [CustomerController::class, 'store'])->name('fats.customers.store')->middleware('permission:view-olt-management-menu');

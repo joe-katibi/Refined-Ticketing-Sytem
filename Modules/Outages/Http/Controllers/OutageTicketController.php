@@ -2,15 +2,14 @@
 
 namespace Modules\Outages\Http\Controllers;
 
+use App\Models\Team;
+use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Modules\Outages\Models\Outage;
-use Modules\Outages\Models\OutageTicket;
 use Modules\Outages\Models\OutageProgress;
-use App\Models\Team;
-use App\Models\User;
+use Modules\Outages\Models\OutageTicket;
 
 class OutageTicketController extends OutagesController
 {
@@ -43,8 +42,8 @@ class OutageTicketController extends OutagesController
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('title', 'like', "%{$search}%")
-                  ->orWhere('ticket_number', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%");
+                    ->orWhere('ticket_number', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
             });
         }
 
@@ -66,14 +65,14 @@ class OutageTicketController extends OutagesController
     {
         $outageId = $request->get('outage_id');
         $outage = $outageId ? Outage::find($outageId) : null;
-        
+
         $outages = Outage::where('status', '!=', 'Closed')->get();
         $teams = Team::where('status', 'Active')->get();
         $users = User::where('user_status', 1)->get();
         $priorities = ['Low', 'Medium', 'High', 'Critical'];
         $impacts = ['Low', 'Medium', 'High', 'Critical'];
         $urgencies = ['Low', 'Medium', 'High', 'Critical'];
-        
+
         return view($this->view('tickets.create'), compact(
             'outage', 'outages', 'teams', 'users', 'priorities', 'impacts', 'urgencies'
         ));
@@ -96,11 +95,16 @@ class OutageTicketController extends OutagesController
             'assigned_to' => 'nullable|exists:users,id',
         ]);
 
+        // Generated BEFORE the transaction below on purpose — see the
+        // identical fix/comment on Outage::generateTicketNumber()'s caller
+        // in OutageController::store().
+        $ticketNumber = OutageTicket::generateTicketNumber();
+
         DB::beginTransaction();
         try {
             $ticket = OutageTicket::create([
                 'outage_id' => $request->outage_id,
-                'ticket_number' => OutageTicket::generateTicketNumber(),
+                'ticket_number' => $ticketNumber,
                 'title' => $request->title,
                 'description' => $request->description,
                 'status' => 'Open',
@@ -130,8 +134,9 @@ class OutageTicketController extends OutagesController
                 ->with('success', 'Ticket created successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
+
             return back()->withInput()
-                ->with('error', 'Failed to create ticket: ' . $e->getMessage());
+                ->with('error', 'Failed to create ticket: '.$e->getMessage());
         }
     }
 
@@ -142,7 +147,7 @@ class OutageTicketController extends OutagesController
     {
         $outageTicket->load([
             'outage', 'assignedTeam', 'assignee', 'reporter',
-            'progress.user', 'attachments.uploader', 'reasons.resolver'
+            'progress.user', 'attachments.uploader', 'reasons.resolver',
         ]);
 
         $teams = Team::where('status', 'Active')->get();
@@ -165,7 +170,7 @@ class OutageTicketController extends OutagesController
         $statuses = ['Open', 'In Progress', 'On Hold', 'Resolved', 'Closed'];
 
         return view($this->view('tickets.edit'), compact(
-            'outageTicket', 'outages', 'teams', 'users', 'priorities', 
+            'outageTicket', 'outages', 'teams', 'users', 'priorities',
             'impacts', 'urgencies', 'statuses'
         ));
     }
@@ -231,8 +236,9 @@ class OutageTicketController extends OutagesController
                 ->with('success', 'Ticket updated successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
+
             return back()->withInput()
-                ->with('error', 'Failed to update ticket: ' . $e->getMessage());
+                ->with('error', 'Failed to update ticket: '.$e->getMessage());
         }
     }
 
@@ -243,10 +249,11 @@ class OutageTicketController extends OutagesController
     {
         try {
             $outageTicket->delete();
+
             return redirect()->route('outage-tickets.index')
                 ->with('success', 'Ticket deleted successfully.');
         } catch (\Exception $e) {
-            return back()->with('error', 'Failed to delete ticket: ' . $e->getMessage());
+            return back()->with('error', 'Failed to delete ticket: '.$e->getMessage());
         }
     }
 
@@ -290,13 +297,14 @@ class OutageTicketController extends OutagesController
 
             return response()->json([
                 'success' => true,
-                'message' => 'Progress updated successfully.'
+                'message' => 'Progress updated successfully.',
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update progress: ' . $e->getMessage()
+                'message' => 'Failed to update progress: '.$e->getMessage(),
             ], 500);
         }
     }
