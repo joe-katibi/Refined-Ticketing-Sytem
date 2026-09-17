@@ -2,13 +2,12 @@
 
 namespace Modules\Appointment\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Routing\Controller;
-use Modules\Appointment\Models\Appointment;
 use App\Models\SubDepartment;
 use App\Models\SubTeamType;
 use App\Models\Team;
+use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
+use Modules\Appointment\Models\Appointment;
 
 class DashboardController extends Controller
 {
@@ -27,7 +26,7 @@ class DashboardController extends Controller
             $metrics = $this->getSubDepartmentMetrics($subDepartment->id);
             $dashboardData[$subDepartment->id] = [
                 'name' => $subDepartment->sub_department_name,
-                'metrics' => $metrics
+                'metrics' => $metrics,
             ];
         }
 
@@ -39,7 +38,7 @@ class DashboardController extends Controller
             $metrics = $this->getSubTeamMetrics($subTeam->id);
             $subTeamData[$subTeam->id] = [
                 'name' => $subTeam->sub_type_name,
-                'metrics' => $metrics
+                'metrics' => $metrics,
             ];
         }
 
@@ -51,12 +50,15 @@ class DashboardController extends Controller
             $metrics = $this->getAssignedTeamMetrics($team->id);
             $assignedTeamData[$team->id] = [
                 'name' => $team->team_name,
-                'metrics' => $metrics
+                'metrics' => $metrics,
             ];
         }
 
         // Get overall metrics
         $overallMetrics = $this->getOverallMetrics();
+
+        // Open tickets aged since raised, by region then sub category
+        $openTicketsAging = $this->getOpenTicketsAgingByRegionAndSubCategory();
 
         return view('appointment::dashboard.index', compact(
             'dashboardData',
@@ -65,8 +67,88 @@ class DashboardController extends Controller
             'subTeamData',
             'subTeams',
             'assignedTeamData',
-            'assignedTeams'
+            'assignedTeams',
+            'openTicketsAging'
         ));
+    }
+
+    /**
+     * Open (not closed) appointments broken down by region, then by sub
+     * category within each region, aged into fixed hour bands since
+     * created_at. Bands share the same 3/6/9/12/15/18/21/24/48/72(+) hour
+     * boundaries used by the Region/Open Tickets reports (see
+     * App\Traits\BucketsTicketAge) but are rendered here as a cross-tab
+     * (one column per band) rather than a single labeled range per row,
+     * matching the pivot-table layout this section is meant to reproduce.
+     */
+    private function getOpenTicketsAgingByRegionAndSubCategory(): array
+    {
+        $closedStatuses = ['Completed', 'Closed', 'Scheduled-Closed'];
+        $boundaries = [3, 6, 9, 12, 15, 18, 21, 24, 48, 72];
+        $bucketCount = count($boundaries) + 1; // +1 for "> 72 hrs"
+
+        $bucketIndexFor = function (float $hours) use ($boundaries) {
+            foreach ($boundaries as $i => $boundary) {
+                if ($hours <= $boundary) {
+                    return $i;
+                }
+            }
+
+            return count($boundaries);
+        };
+
+        $rows = DB::table('appointments')
+            ->leftJoin('regions', 'appointments.region_id', '=', 'regions.id')
+            ->leftJoin('subcategories', 'appointments.sub_category_id', '=', 'subcategories.id')
+            ->select('appointments.created_at', 'regions.name as region_name', 'subcategories.sub_category_name')
+            ->whereNotIn('appointments.status', $closedStatuses)
+            ->get();
+
+        $regions = [];
+        $grandTotal = ['total' => 0, 'buckets' => array_fill(0, $bucketCount, 0)];
+
+        foreach ($rows as $row) {
+            $regionName = $row->region_name ?? 'Unassigned';
+            $subCategoryName = $row->sub_category_name ?? 'Uncategorized';
+            $hours = \Carbon\Carbon::parse($row->created_at)->diffInHours(now());
+            $bucketIndex = $bucketIndexFor($hours);
+
+            if (! isset($regions[$regionName])) {
+                $regions[$regionName] = [
+                    'total' => 0,
+                    'buckets' => array_fill(0, $bucketCount, 0),
+                    'sub_categories' => [],
+                ];
+            }
+            if (! isset($regions[$regionName]['sub_categories'][$subCategoryName])) {
+                $regions[$regionName]['sub_categories'][$subCategoryName] = [
+                    'total' => 0,
+                    'buckets' => array_fill(0, $bucketCount, 0),
+                ];
+            }
+
+            $regions[$regionName]['total']++;
+            $regions[$regionName]['buckets'][$bucketIndex]++;
+            $regions[$regionName]['sub_categories'][$subCategoryName]['total']++;
+            $regions[$regionName]['sub_categories'][$subCategoryName]['buckets'][$bucketIndex]++;
+            $grandTotal['total']++;
+            $grandTotal['buckets'][$bucketIndex]++;
+        }
+
+        // Largest-backlog region first, matching this dashboard's existing
+        // convention of surfacing where the problem is worst.
+        uasort($regions, fn ($a, $b) => $b['total'] <=> $a['total']);
+
+        foreach ($regions as &$region) {
+            uasort($region['sub_categories'], fn ($a, $b) => $b['total'] <=> $a['total']);
+        }
+        unset($region);
+
+        return [
+            'boundaries' => $boundaries,
+            'regions' => $regions,
+            'grand_total' => $grandTotal,
+        ];
     }
 
     /**
@@ -115,7 +197,7 @@ class DashboardController extends Controller
             'today_closed_within_sla' => $todayClosedWithinSla,
             'today_closed_outside_sla' => $todayClosedOutsideSla,
             'backlog' => $backlog,
-            'sla_compliance_percentage' => $slaCompliancePercentage
+            'sla_compliance_percentage' => $slaCompliancePercentage,
         ];
     }
 
@@ -165,7 +247,7 @@ class DashboardController extends Controller
             'today_closed_within_sla' => $todayClosedWithinSla,
             'today_closed_outside_sla' => $todayClosedOutsideSla,
             'backlog' => $backlog,
-            'sla_compliance_percentage' => $slaCompliancePercentage
+            'sla_compliance_percentage' => $slaCompliancePercentage,
         ];
     }
 
@@ -215,7 +297,7 @@ class DashboardController extends Controller
             'today_closed_within_sla' => $todayClosedWithinSla,
             'today_closed_outside_sla' => $todayClosedOutsideSla,
             'backlog' => $backlog,
-            'sla_compliance_percentage' => $slaCompliancePercentage
+            'sla_compliance_percentage' => $slaCompliancePercentage,
         ];
     }
 
@@ -294,7 +376,7 @@ class DashboardController extends Controller
             'highest_backlog_dept' => $highestBacklogTeamName,
             'within_tat' => $withinTat,
             'outside_tat' => $outsideTat,
-            'tat_compliance_percentage' => $tatCompliancePercentage
+            'tat_compliance_percentage' => $tatCompliancePercentage,
         ];
     }
 }

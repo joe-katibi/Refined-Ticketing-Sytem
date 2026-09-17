@@ -370,6 +370,71 @@ $configData = Helper::appClasses();
                             </div>
                         </div>
                     </div>
+
+                    <!-- Open Tickets Aging by Region / Sub Category -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title mb-0">Open Tickets — Time Since Raised, by Region &amp; Sub Category</h5>
+                                    <p class="text-muted mb-0 small">Still-open appointments only, aged from creation to now</p>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered table-sm">
+                                            <thead>
+                                                <tr class="table-primary">
+                                                    <th>Region</th>
+                                                    <th class="text-center">Total</th>
+                                                    @foreach($openTicketsAging['boundaries'] as $boundary)
+                                                        <th class="text-center">{{ $boundary }} hrs</th>
+                                                    @endforeach
+                                                    <th class="text-center">&gt; {{ end($openTicketsAging['boundaries']) }} hrs</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @forelse($openTicketsAging['regions'] as $regionName => $region)
+                                                    <tr class="fw-bold">
+                                                        <td>{{ $regionName }}</td>
+                                                        <td class="text-center">{{ $region['total'] }}</td>
+                                                        @foreach($region['buckets'] as $count)
+                                                            <td class="text-center">{{ $count ?: '' }}</td>
+                                                        @endforeach
+                                                    </tr>
+                                                    @foreach($region['sub_categories'] as $subCategoryName => $subCategory)
+                                                        <tr>
+                                                            <td class="ps-4 text-muted">{{ $subCategoryName }}</td>
+                                                            <td class="text-center">{{ $subCategory['total'] }}</td>
+                                                            @foreach($subCategory['buckets'] as $count)
+                                                                <td class="text-center">{{ $count ?: '' }}</td>
+                                                            @endforeach
+                                                        </tr>
+                                                    @endforeach
+                                                @empty
+                                                    <tr>
+                                                        <td colspan="{{ count($openTicketsAging['boundaries']) + 3 }}" class="text-center text-muted">
+                                                            No open tickets found.
+                                                        </td>
+                                                    </tr>
+                                                @endforelse
+                                            </tbody>
+                                            @if(count($openTicketsAging['regions']) > 0)
+                                                <tfoot>
+                                                    <tr class="table-primary fw-bold">
+                                                        <td>Grand Total</td>
+                                                        <td class="text-center">{{ $openTicketsAging['grand_total']['total'] }}</td>
+                                                        @foreach($openTicketsAging['grand_total']['buckets'] as $count)
+                                                            <td class="text-center">{{ $count ?: '' }}</td>
+                                                        @endforeach
+                                                    </tr>
+                                                </tfoot>
+                                            @endif
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
