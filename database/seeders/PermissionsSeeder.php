@@ -392,6 +392,30 @@ class PermissionsSeeder extends Seeder
             ],
             [
                 'module' => 'Appointment',
+                'sub_module' => 'Status Management',
+                'description' => 'View Appointment Statuses',
+                'name' => 'view-statuses-appointment',
+            ],
+            [
+                'module' => 'Appointment',
+                'sub_module' => 'Status Management',
+                'description' => 'Create Appointment Statuses',
+                'name' => 'create-statuses-appointment',
+            ],
+            [
+                'module' => 'Appointment',
+                'sub_module' => 'Status Management',
+                'description' => 'Edit Appointment Statuses',
+                'name' => 'edit-statuses-appointment',
+            ],
+            [
+                'module' => 'Appointment',
+                'sub_module' => 'Status Management',
+                'description' => 'Delete Appointment Statuses',
+                'name' => 'delete-statuses-appointment',
+            ],
+            [
+                'module' => 'Appointment',
                 'sub_module' => 'Final Reasons',
                 'description' => 'Manage Final Reasons',
                 'name' => 'view-final-reasons-appointment',

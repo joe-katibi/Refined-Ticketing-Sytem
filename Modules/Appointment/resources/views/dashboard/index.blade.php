@@ -229,8 +229,8 @@ $configData = Helper::appClasses();
                                 <div class="card-body">
                                     <div class="table-responsive">
                                         <table class="table table-striped table-hover">
-                                            <thead class="table-primary">
-                                                <tr>
+                                            <thead>
+                                                <tr class="table-primary">
                                                     <th>SUB TEAM</th>
                                                     <th>RECEIVED TODAY</th>
                                                     <th>CLOSED TODAY</th>
@@ -307,8 +307,8 @@ $configData = Helper::appClasses();
                                 <div class="card-body">
                                     <div class="table-responsive">
                                         <table class="table table-striped table-hover">
-                                            <thead class="table-success">
-                                                <tr>
+                                            <thead>
+                                                <tr class="table-success">
                                                     <th>ASSIGNED TEAM</th>
                                                     <th>RECEIVED TODAY</th>
                                                     <th>CLOSED TODAY</th>
